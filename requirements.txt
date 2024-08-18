@@ -1,0 +1,17 @@
+numpy
+pandas
+scikit-learn
+tensorflow
+keras
+matplotlib
+pqcrypto
+scipy
+joblib
+pycryptodome
+pytest
+jupyter
+seaborn
+tqdm
+shap
+lime
+nvivo  # For qualitative data analysis
