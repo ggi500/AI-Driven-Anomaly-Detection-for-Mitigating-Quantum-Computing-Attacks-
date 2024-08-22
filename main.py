@@ -10,36 +10,31 @@ import seaborn as sns
 from src.data_pipeline import main as generate_data
 
 def main():
-    print("Generating data...")
-    generate_data()
+    print("Current working directory:", os.getcwd())
     
-    print("Running analysis...")
+    # Ensure Data directory exists
+    os.makedirs('Data', exist_ok=True)
+    print("Files in Data directory:", os.listdir('Data'))
 
-    # Check if the Data directory exists
-    if not os.path.exists('Data'):
-        print("Data directory does not exist.")
-        os.makedirs('Data')
-        print("Data directory created.")
+    data_file = 'Data/processed_swift_data.csv'
+    
+    if not os.path.exists(data_file):
+        print(f"File {data_file} not found. Generating data...")
+        generate_data()
+    
+    if os.path.exists(data_file):
+        print(f"Loading data from {data_file}")
+        swift_data = pd.read_csv(data_file)
+        time_series_data = np.load('Data/time_series_data.npy')
     else:
-        # List files in the Data directory
-        print("Files in Data directory:", os.listdir('Data'))
+        print(f"Error: {data_file} still doesn't exist after attempting to generate it.")
+        return
 
-        # Check if the processed_swift_data.csv file exists
-        if 'processed_swift_data.csv' in os.listdir('Data'):
-            print("processed_swift_data.csv exists.")
-        else:
-            print("processed_swift_data.csv does not exist.")
-
-    # Load and preprocess multiple datasets
-    print("Loading and preprocessing data...")
-    unsw, cicids, ieee_cis, paysim = load_datasets()
-    swift_data, time_series_data = preprocess_pipeline(unsw, cicids, ieee_cis, paysim)
-    
     print("Data preprocessing complete.")
     print("Shape of preprocessed SWIFT-like data:", swift_data.shape)
     print("Shape of time series data:", time_series_data.shape)
-    
-    # Save the processed data to the Data directory
+
+    # Save the processed data to the Data directory (in case it wasn't saved during generation)
     swift_data.to_csv('Data/processed_swift_data.csv', index=False)
     np.save('Data/time_series_data.npy', time_series_data)
     
