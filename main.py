@@ -20,31 +20,31 @@ def main():
     
     if not os.path.exists(data_file):
         print(f"File {data_file} not found. Generating data...")
-        generate_data()
-    
-    if os.path.exists(data_file):
+        # Load and preprocess multiple datasets
+        print("Loading and preprocessing data...")
+        unsw, cicids, ieee_cis, paysim = load_datasets()
+        swift_data, time_series_data = preprocess_pipeline(unsw, cicids, ieee_cis, paysim)
+        
+        print("Data preprocessing complete.")
+        print("Shape of preprocessed SWIFT-like data:", swift_data.shape)
+        print("Shape of time series data:", time_series_data.shape)
+        
+        # Save the processed data to the Data directory
+        swift_data.to_csv(data_file, index=False)
+        np.save('Data/time_series_data.npy', time_series_data)
+        
+        print(f"Processed data saved to {data_file}")
+    else:
         print(f"Loading data from {data_file}")
         swift_data = pd.read_csv(data_file)
         time_series_data = np.load('Data/time_series_data.npy')
+
+    # Final check for the file's existence
+    if os.path.exists(data_file):
+        print("The file 'processed_swift_data.csv' exists.")
     else:
-        print(f"Error: {data_file} still doesn't exist after attempting to generate it.")
+        print("Error: The file 'processed_swift_data.csv' was not created.")
         return
-
-    print("Data preprocessing complete.")
-    print("Shape of preprocessed SWIFT-like data:", swift_data.shape)
-    print("Shape of time series data:", time_series_data.shape)
-
-    # Save the processed data to the Data directory (in case it wasn't saved during generation)
-    swift_data.to_csv('Data/processed_swift_data.csv', index=False)
-    np.save('Data/time_series_data.npy', time_series_data)
-    
-    print("Processed data saved to Data/processed_swift_data.csv")
-
-    # Final check for the file's existence (optional)
-    if os.path.exists('Data/processed_swift_data.csv'):
-        print("The file 'processed_swift_data.csv' has been created successfully!")
-    else:
-        print("The file 'processed_swift_data.csv' was not created.")
 
     # Split data into features (X) and target (y)
     print("Splitting data...")
