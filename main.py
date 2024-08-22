@@ -1,12 +1,12 @@
-from src.data_preprocessing import preprocess_data, load_ieee_cis_data, add_kyber_elements, preprocess_pipeline, load_datasets
-from src.model_adaptation import adapt_isolation_forest, adapt_lstm
-from src.evaluation import evaluate_isolation_forest, evaluate_lstm
-from sklearn.model_selection import train_test_split
-import numpy as np
 import os
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import train_test_split
+from src.model_adaptation import adapt_isolation_forest, adapt_lstm
+from src.evaluation import evaluate_isolation_forest, evaluate_lstm
+from src.data_preprocessing import preprocess_data, load_ieee_cis_data, add_kyber_elements, preprocess_pipeline, load_datasets
 from src.data_pipeline import main as generate_data
 
 def main():
@@ -45,6 +45,9 @@ def main():
     else:
         print("Error: The file 'processed_swift_data.csv' was not created.")
         return
+
+    print("Shape of preprocessed SWIFT-like data:", swift_data.shape)
+    print("Shape of time series data:", time_series_data.shape)
 
     # Split data into features (X) and target (y)
     print("Splitting data...")
