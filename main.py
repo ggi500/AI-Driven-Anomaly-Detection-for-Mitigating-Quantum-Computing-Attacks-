@@ -4,8 +4,17 @@ from src.evaluation import evaluate_isolation_forest, evaluate_lstm
 from sklearn.model_selection import train_test_split
 import numpy as np
 import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from src.data_pipeline import main as generate_data
 
 def main():
+    print("Generating data...")
+    generate_data()
+    
+    print("Running analysis...")
+
     # Check if the Data directory exists
     if not os.path.exists('Data'):
         print("Data directory does not exist.")
@@ -79,6 +88,27 @@ def main():
     print("\nLSTM Results:")
     for metric, value in lstm_results.items():
         print(f"{metric}: {value}")
+
+    # Add basic data visualization
+    print("\nGenerating basic visualizations...")
+    
+    # Histogram of transaction amounts
+    plt.figure(figsize=(10, 6))
+    sns.histplot(swift_data['amount'], bins=50)
+    plt.title('Distribution of Transaction Amounts')
+    plt.xlabel('Amount')
+    plt.ylabel('Frequency')
+    plt.savefig('Data/transaction_amounts_distribution.png')
+    plt.close()
+
+    # Correlation heatmap
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(swift_data.corr(), annot=True, cmap='coolwarm', linewidths=0.5)
+    plt.title('Correlation Heatmap of Features')
+    plt.savefig('Data/correlation_heatmap.png')
+    plt.close()
+
+    print("Visualizations saved in the Data directory.")
 
 if __name__ == "__main__":
     main()
