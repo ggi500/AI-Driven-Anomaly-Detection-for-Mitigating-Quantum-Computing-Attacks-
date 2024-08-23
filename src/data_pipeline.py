@@ -114,7 +114,7 @@ def preprocess_pipeline(unsw, cicids, ieee_cis, paysim):
     
     return swift_data, time_series_data
 
-def main():
+def generate_and_save_data():
     print("Generating data...")
     
     # Ensure Data directory exists

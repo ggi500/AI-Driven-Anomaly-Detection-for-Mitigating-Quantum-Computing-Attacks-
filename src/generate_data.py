@@ -1,8 +1,8 @@
-# generate_data.py
 import os
 import pandas as pd
 import numpy as np
 from data_preprocessing import preprocess_pipeline, load_datasets
+
 def generate_and_save_data():
     print("Generating data...")
     
@@ -27,12 +27,14 @@ def generate_and_save_data():
         swift_data.to_csv(swift_data_path, index=False)
         np.save(time_series_data_path, time_series_data)
         
-        # Verify files were created
-        if os.path.exists(swift_data_path) and os.path.exists(time_series_data_path):
-            print(f"Processed data saved to {swift_data_path}")
-            print(f"Time series data saved to {time_series_data_path}")
-        else:
-            print("Error: Files were not created successfully.")
+        print(f"Processed data saved to {swift_data_path}")
+        print(f"Time series data saved to {time_series_data_path}")
+        
+        return swift_data, time_series_data
     
     except Exception as e:
         print(f"An error occurred during data generation: {str(e)}")
+        return None, None
+
+if __name__ == "__main__":
+    generate_and_save_data()

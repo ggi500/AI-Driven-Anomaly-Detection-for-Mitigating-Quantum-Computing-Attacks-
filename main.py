@@ -6,7 +6,7 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from src.model_adaptation import adapt_isolation_forest, adapt_lstm
 from src.evaluation import evaluate_isolation_forest, evaluate_lstm
-from src.data_pipeline import main as generate_data  # Importing the main function from data_pipeline
+from src.generate_data import generate_and_save_data as generate_data
 
 def main():
     print("Generating or loading data...")
