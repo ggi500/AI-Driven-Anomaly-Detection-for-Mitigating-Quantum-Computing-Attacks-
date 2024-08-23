@@ -17,10 +17,16 @@ def download_file(url, dest_folder, dest_name=None):
     if not os.path.exists(dest_path):
         print(f"Downloading {dest_name}...")
         response = requests.get(url, stream=True)
-        with open(dest_path, 'wb') as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-        print(f"Downloaded {dest_name} to {dest_path}")
+        if response.status_code == 200:
+            try:
+                with open(dest_path, 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        file.write(chunk)
+                print(f"Downloaded {dest_name} to {dest_path}")
+            except Exception as e:
+                print(f"An error occurred while writing the file: {e}")
+        else:
+            print(f"Failed to download {url}. Status code: {response.status_code}")
     else:
         print(f"{dest_name} already exists, skipping download.")
     return dest_path
