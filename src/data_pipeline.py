@@ -148,4 +148,4 @@ def generate_and_save_data():
         return None, None
 
 if __name__ == "__main__":
-    main()
+    generate_and_save_data()
