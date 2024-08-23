@@ -30,7 +30,7 @@ def prepare_sequences(data, sequence_length):
 
 if __name__ == "__main__":
     # Test model adaptation functions here
-    # You'll need to load your preprocessed data first
+    # Load your preprocessed data first
     # Example usage (uncomment and modify as needed):
     
     # Simulating some data for demonstration
