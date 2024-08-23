@@ -6,47 +6,18 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from src.model_adaptation import adapt_isolation_forest, adapt_lstm
 from src.evaluation import evaluate_isolation_forest, evaluate_lstm
-from src.data_preprocessing import preprocess_data, load_ieee_cis_data, add_kyber_elements, preprocess_pipeline, load_datasets
-from src.data_pipeline import main as generate_data
+from src.data_pipeline import main as generate_data  # Importing the main function from data_pipeline
 
 def main():
-    print("Current working directory:", os.getcwd())
+    print("Generating or loading data...")
+    swift_data, time_series_data = generate_data()  # Using the generate_data function to load/generate data
     
-    # Ensure Data directory exists
-    os.makedirs('Data', exist_ok=True)
-    print("Files in Data directory:", os.listdir('Data'))
-
-    data_file = 'Data/processed_swift_data.csv'
-    
-    if not os.path.exists(data_file):
-        print(f"File {data_file} not found. Generating data...")
-        # Load and preprocess multiple datasets
-        print("Loading and preprocessing data...")
-        unsw, cicids, ieee_cis, paysim = load_datasets()
-        swift_data, time_series_data = preprocess_pipeline(unsw, cicids, ieee_cis, paysim)
-        
-        print("Data preprocessing complete.")
-        print("Shape of preprocessed SWIFT-like data:", swift_data.shape)
-        print("Shape of time series data:", time_series_data.shape)
-        
-        # Save the processed data to the Data directory
-        swift_data.to_csv(data_file, index=False)
-        np.save('Data/time_series_data.npy', time_series_data)
-        
-        print(f"Processed data saved to {data_file}")
-    else:
-        print(f"Loading data from {data_file}")
-        swift_data = pd.read_csv(data_file)
-        time_series_data = np.load('Data/time_series_data.npy')
-
-    # Final check for the file's existence
-    if os.path.exists(data_file):
-        print("The file 'processed_swift_data.csv' exists.")
-    else:
-        print("Error: The file 'processed_swift_data.csv' was not created.")
+    if swift_data is None or time_series_data is None:
+        print("Error: Failed to generate or load data.")
         return
 
-    print("Shape of preprocessed SWIFT-like data:", swift_data.shape)
+    print("Data loaded successfully.")
+    print("Shape of SWIFT-like data:", swift_data.shape)
     print("Shape of time series data:", time_series_data.shape)
 
     # Split data into features (X) and target (y)

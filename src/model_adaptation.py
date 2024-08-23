@@ -29,7 +29,7 @@ def prepare_sequences(data, sequence_length):
     return np.array(X), np.array(y)
 
 if __name__ == "__main__":
-    # Test your model adaptation functions here
+    # Test model adaptation functions here
     # You'll need to load your preprocessed data first
     # Example usage (uncomment and modify as needed):
     
