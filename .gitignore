@@ -1,3 +1,7 @@
 # Kaggle API credentials
 kaggle.json
-/home/codespace/.kaggle/kaggle.json/home/codespace/.kaggle/kaggle.json
+/home/codespace/.kaggle/kaggle.json
+
+# UNSW-NB15 Dataset
+Data/UNSW-NB15/*
+!Data/UNSW-NB15/README.md
