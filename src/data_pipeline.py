@@ -10,7 +10,7 @@ import os
 fake = Faker()
 
 # Import your load_datasets function
-from data_acquisition import load_datasets
+from download_dataset import load_datasets
 
 def clean_data(df):
     df = df.drop_duplicates()
