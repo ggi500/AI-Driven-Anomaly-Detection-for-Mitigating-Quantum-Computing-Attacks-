@@ -1,0 +1,12 @@
+> git push origin main:main
+remote: warning: File Data/CIC-IDS2017/UNSW-NB15_4.csv is 93.07 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB        
+remote: error: Trace: 8f6b6752adbd9bcc0860e288e543cc3a3ce6cb7dbc18c6c78e2427b069417673        
+remote: error: See https://gh.io/lfs for more information.        
+remote: error: File Data/CIC-IDS2017/UNSW-NB15_1.csv is 161.15 MB; this exceeds GitHub's file size limit of 100.00 MB        
+remote: error: File Data/CIC-IDS2017/UNSW-NB15_2.csv is 157.57 MB; this exceeds GitHub's file size limit of 100.00 MB        
+remote: error: File Data/CIC-IDS2017/UNSW-NB15_3.csv is 147.43 MB; this exceeds GitHub's file size limit of 100.00 MB        
+remote: error: File Data/CIC-IDS2017.zip is 149.02 MB; this exceeds GitHub's file size limit of 100.00 MB        
+remote: error: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.        
+To https://github.com/ggi500/AI-Driven-Anomaly-Detection-for-Mitigating-Quantum-Computing-Attacks-
+ ! [remote rejected] main -> main (pre-receive hook declined)
+error: failed to push some refs to 'https://github.com/ggi500/AI-Driven-Anomaly-Detection-for-Mitigating-Quantum-Computing-Attacks-'
