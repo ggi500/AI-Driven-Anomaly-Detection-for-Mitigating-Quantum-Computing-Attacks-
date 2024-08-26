@@ -1,9 +1,19 @@
+import time
 import tensorflow as tf
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score, confusion_matrix
 from sklearn.model_selection import KFold, train_test_split
 import numpy as np
 from sklearn.utils import resample
+from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
+
+# Utility Function for Profiling
+def profile_code(func, *args):
+    start_time = time.time()
+    result = func(*args)
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time} seconds")
+    return result
 
 # Model Adaptation Functions
 def adapt_isolation_forest(data, contamination=0.1):
@@ -180,6 +190,15 @@ def bootstrap_sampling(model_func, X, y, n_iterations=100, sequence_length=None)
     avg_metrics = {key: np.mean(values) for key, values in metrics.items()}
     return avg_metrics
 
+def evaluate_crypto_performance():
+    key_sizes = analyze_key_sizes()
+    encapsulation_times = analyze_encapsulation_times()
+    decapsulation_times = analyze_decapsulation_times()
+
+    print(f"Average Key Size: {np.mean(key_sizes)} bytes")
+    print(f"Average Encapsulation Time: {np.mean(encapsulation_times)} seconds")
+    print(f"Average Decapsulation Time: {np.mean(decapsulation_times)} seconds")
+
 if __name__ == "__main__":
     # Example usage:
     # Simulating some data for demonstration
@@ -208,5 +227,8 @@ if __name__ == "__main__":
     # Bootstrap Sampling
     bootstrap_metrics = bootstrap_sampling(adapt_lstm, data, np.random.randint(0, 2, size=1000), n_iterations=100, sequence_length=sequence_length)
     print("Bootstrap Sampling metrics:", bootstrap_metrics)
+
+    # Evaluate cryptographic performance
+    evaluate_crypto_performance()
 
     print("Model adaptation and evaluation complete.")
