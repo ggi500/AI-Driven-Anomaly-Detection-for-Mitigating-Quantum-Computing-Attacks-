@@ -43,6 +43,10 @@ def download_unsw_nb15():
     data_dir = 'datasets/unsw_nb15'
     kaggle.api.dataset_download_files(dataset_name, path=data_dir, unzip=True)
     print(f"UNSW-NB15 dataset downloaded and extracted to {data_dir}")
+    
+    # List the contents of the directory
+    files = os.listdir(data_dir)
+    print(f"Files in '{data_dir}': {files}")
 
 # CIC-IDS2017 from Kaggle
 def download_cic_ids2017():
@@ -50,17 +54,30 @@ def download_cic_ids2017():
     data_dir = 'datasets/cic_ids2017'
     kaggle.api.dataset_download_files(dataset_name, path=data_dir, unzip=True)
     print(f"CIC-IDS2017 dataset downloaded and extracted to {data_dir}")
+    
+    # List the contents of the directory
+    files = os.listdir(data_dir)
+    print(f"Files in '{data_dir}': {files}")
 
 # IEEE-CIS Fraud Detection (Kaggle)
 def download_ieee_cis_fraud():
     kaggle.api.authenticate()
     kaggle.api.competition_download_files('ieee-fraud-detection', path='datasets/ieee_cis_fraud', quiet=False)
     extract_zip('datasets/ieee_cis_fraud/ieee-fraud-detection.zip', 'datasets/ieee_cis_fraud')
+    
+    # List the contents of the directory
+    files = os.listdir('datasets/ieee_cis_fraud')
+    print(f"Files in 'datasets/ieee_cis_fraud': {files}")
 
 # PaySim (Kaggle)
 def download_paysim():
     kaggle.api.authenticate()
     kaggle.api.dataset_download_files('ntnu-testimon/paysim1', path='datasets/paysim', quiet=False, unzip=True)
+    print(f"PaySim dataset downloaded and extracted to 'datasets/paysim'")
+    
+    # List the contents of the directory
+    files = os.listdir('datasets/paysim')
+    print(f"Files in 'datasets/paysim': {files}")
 
 # Download and load datasets
 download_unsw_nb15()
@@ -73,10 +90,10 @@ print("All datasets downloaded and extracted.")
 # Load datasets using pandas
 import pandas as pd
 
-# Example paths - adjust according to your actual files
+# Example paths 
 def load_datasets():
-    unsw_nb15_data = pd.read_csv('datasets/unsw_nb15/UNSW-NB15.csv')  # Replace with actual file path
-    cic_ids2017_data = pd.read_csv('datasets/cic_ids2017/CIC-IDS2017.csv')  # Replace with actual file path
+    unsw_nb15_data = pd.read_csv('datasets/unsw_nb15/UNSW-NB15.csv')  
+    cic_ids2017_data = pd.read_csv('datasets/cic_ids2017/CIC-IDS2017.csv')  
     ieee_cis_fraud_data = pd.read_csv('datasets/ieee_cis_fraud/train_transaction.csv')
     paysim_data = pd.read_csv('datasets/paysim/PS_20174392719_1491204439457_log.csv')
     
