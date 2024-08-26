@@ -1,7 +1,11 @@
-# Kaggle API credentials
-kaggle.json
-/home/codespace/.kaggle/kaggle.json
+# Ignore Kaggle API credentials
+echo "kaggle.json" >> .gitignore
+echo "/home/codespace/.kaggle/kaggle.json" >> .gitignore
 
-# UNSW-NB15 Dataset
-Data/UNSW-NB15/*
-!Data/UNSW-NB15/README.mdData/UNSW-NB15/*
+# Ignore all files in the UNSW-NB15 dataset directory except README.md
+echo "Data/UNSW-NB15/*" >> .gitignore
+echo "!Data/UNSW-NB15/README.md" >> .gitignore
+
+# Ignore all CIC-IDS2017 CSV files and the zip file
+echo "Data/CIC-IDS2017/*.csv" >> .gitignore
+echo "Data/CIC-IDS2017.zip" >> .gitignore
