@@ -5,7 +5,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_sc
 from sklearn.model_selection import KFold, train_test_split
 import numpy as np
 from sklearn.utils import resample
-from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
+from src.crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
 
 # Utility Function for Profiling
 def profile_code(func, *args):
