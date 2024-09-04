@@ -7,7 +7,8 @@ import seaborn as sns
 from pqcrypto.kem import kyber512
 from faker import Faker
 import torch
-from syft.frameworks.torch.dp import pate
+import syft
+from syft.frameworks.torch import dp
 
 # Load datasets
 def load_ieee_cis_data(filepath):
