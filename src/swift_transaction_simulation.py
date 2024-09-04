@@ -1,11 +1,14 @@
-# swift_transaction_simulation.py
-
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from cryptography.fernet import Fernet
 from crypto_analysis import perform_kyber_operations
 from joblib import load  # Import for loading Isolation Forest
 import tensorflow as tf  # Import for loading LSTM
+
+# Generate a key and cipher suite
+key = Fernet.generate_key()
+cipher_suite = Fernet(key)
 
 def simulate_swift_transactions(n_transactions=1000):
     transactions = []
@@ -16,7 +19,10 @@ def simulate_swift_transactions(n_transactions=1000):
             'receiver': f'Receiver_{np.random.randint(1, 100)}',
             'amount': np.random.uniform(1000, 100000),
             'currency': np.random.choice(['USD', 'EUR', 'GBP']),
-            'timestamp': datetime.now()
+            'timestamp': datetime.now(),
+            'sender_encrypted': cipher_suite.encrypt(f'Sender_{np.random.randint(1, 100)}'.encode()),
+            'receiver_encrypted': cipher_suite.encrypt(f'Receiver_{np.random.randint(1, 100)}'.encode()),
+            'amount_encrypted': cipher_suite.encrypt(str(np.random.uniform(1000, 100000)).encode())
         }
 
         # Integrate CRYSTALS-Kyber operations

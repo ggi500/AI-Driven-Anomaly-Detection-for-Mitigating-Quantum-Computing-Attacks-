@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pqcrypto.kem import kyber512
 from faker import Faker
+import torch
+from syft.frameworks.torch.dp import pate
 
 # Load datasets
 def load_ieee_cis_data(filepath):
@@ -157,6 +159,11 @@ def perform_kyber_operations():
         'key_size': len(public_key)
     }
 
+# New function for adding noise (differential privacy)
+def add_noise(data):
+    noise = torch.randn_like(data) * 0.1
+    return data + noise
+
 if __name__ == "__main__":
     # Load datasets from their respective paths
     ieee_cis_data = load_ieee_cis_data('Data/IEEE-CIS-Fraud-Detection-master/train_transaction.csv')
@@ -177,4 +184,12 @@ if __name__ == "__main__":
     print("Data preprocessing complete.")
     
     # Example of displaying processed data
+    print(swift_data.head())
+
+    # New code: Apply differential privacy
+    swift_data_tensor = torch.tensor(swift_data.select_dtypes(include=[np.number]).values, dtype=torch.float32)
+    swift_data_with_noise = add_noise(swift_data_tensor)
+    swift_data.loc[:, swift_data.select_dtypes(include=[np.number]).columns] = swift_data_with_noise.numpy()
+    
+    print("Differential privacy applied.")
     print(swift_data.head())
