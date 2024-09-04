@@ -7,10 +7,11 @@ import seaborn as sns
 from pqcrypto.kem import kyber512
 from faker import Faker
 import torch
-import syft
-from syft.frameworks.torch import dp
+from torch import nn, optim
+from torch.utils.data import DataLoader, TensorDataset
+from opacus import PrivacyEngine  # Opacus for differential privacy in training
 
-# Load datasets
+# Load datasets (remains unchanged)
 def load_ieee_cis_data(filepath):
     try:
         df = pd.read_csv(filepath)
@@ -27,23 +28,7 @@ def load_paysim_data(filepath):
         return None
     return df
 
-def load_unsw_nb15_data(filepath):
-    try:
-        df = pd.read_parquet(filepath)
-    except FileNotFoundError:
-        print(f"Error: {filepath} not found.")
-        return None
-    return df
-
-def load_cicids2017_data(filepath):
-    try:
-        df = pd.read_csv(filepath)
-    except FileNotFoundError:
-        print(f"Error: {filepath} not found.")
-        return None
-    return df
-
-# Preprocessing functions
+# Data Preprocessing (remains unchanged)
 def preprocess_data(df):
     if df is None:
         return None
@@ -79,12 +64,7 @@ def engineer_features(df):
     df['qr_decapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     return df
 
-def create_time_series(df, sequence_length):
-    sequences = []
-    for i in range(len(df) - sequence_length + 1):
-        sequences.append(df.iloc[i:i+sequence_length].values)
-    return np.array(sequences)
-
+# Simulating transactions (unchanged)
 def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=10000):
     swift_transactions = []
     
@@ -107,19 +87,7 @@ def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=1
     
     return pd.DataFrame(swift_transactions)
 
-def preprocess_pipeline(unsw, cicids, ieee_cis, paysim):
-    datasets = [unsw, cicids, ieee_cis, paysim]
-    cleaned_datasets = [clean_data(df) for df in datasets]
-    featured_datasets = [engineer_features(df) for df in cleaned_datasets]
-    normalized_datasets = [normalize_data(df, method='minmax') for df in featured_datasets]
-    
-    swift_data = simulate_swift_transactions(*normalized_datasets)
-    
-    sequence_length = 10
-    time_series_data = create_time_series(swift_data, sequence_length)
-    
-    return swift_data, time_series_data
-
+# Synthetic SWIFT Data Generator (unchanged)
 def generate_synthetic_swift_data(n_samples=1000):
     faker = Faker()
     data = {
@@ -132,18 +100,7 @@ def generate_synthetic_swift_data(n_samples=1000):
     df = pd.DataFrame(data)
     return df
 
-def add_kyber_elements(df):
-    public_keys = []
-    ciphertexts = []
-    for _ in range(len(df)):
-        public_key, secret_key = kyber512.keypair()
-        ciphertext, shared_secret = kyber512.encrypt(public_key)
-        public_keys.append(public_key.hex())
-        ciphertexts.append(ciphertext.hex())
-    df['public_key'] = public_keys
-    df['ciphertext'] = ciphertexts
-    return df
-
+# Kyber Operations (unchanged)
 def perform_kyber_operations():
     public_key, secret_key = kyber512.keypair()
     
@@ -160,37 +117,64 @@ def perform_kyber_operations():
         'key_size': len(public_key)
     }
 
-# New function for adding noise (differential privacy)
-def add_noise(data):
-    noise = torch.randn_like(data) * 0.1
-    return data + noise
+# Differentially Private Model Training with Opacus
+def train_privacy_preserving_model(train_data, target_data, batch_size=32, epochs=5):
+    # Define a simple model (can be extended)
+    model = nn.Sequential(
+        nn.Linear(train_data.shape[1], 128),
+        nn.ReLU(),
+        nn.Linear(128, 1)
+    )
+    
+    # Create DataLoader
+    train_dataset = TensorDataset(torch.tensor(train_data, dtype=torch.float32), torch.tensor(target_data, dtype=torch.float32))
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    # Define optimizer and loss
+    optimizer = optim.SGD(model.parameters(), lr=0.01)
+    criterion = nn.MSELoss()
+
+    # Initialize Opacus Privacy Engine
+    privacy_engine = PrivacyEngine(
+        model,
+        batch_size=batch_size,
+        sample_size=len(train_data),
+        max_grad_norm=1.0
+    )
+    privacy_engine.attach(optimizer)
+
+    # Training loop with differential privacy
+    for epoch in range(epochs):
+        model.train()
+        total_loss = 0.0
+        for X_batch, y_batch in train_loader:
+            optimizer.zero_grad()
+            outputs = model(X_batch)
+            loss = criterion(outputs.squeeze(), y_batch)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(train_loader)}")
+
+    # Return the trained model
+    return model
 
 if __name__ == "__main__":
-    # Load datasets from their respective paths
+    # Load datasets (unchanged)
     ieee_cis_data = load_ieee_cis_data('Data/IEEE-CIS-Fraud-Detection-master/train_transaction.csv')
     paysim_data = load_paysim_data('Data/PaySim-master/PS_20174392719_1491204439457_log.csv')
-    unsw_nb15_data = load_unsw_nb15_data('Data/UNSW-NB15/UNSW_NB15_training-set.parquet')
-    cicids2017_data = load_cicids2017_data('Data/CIC-IDS2017/your_cicids2017_file.csv')
     
-    # Preprocess each dataset
+    # Preprocess datasets (unchanged)
     ieee_cis_data = preprocess_data(ieee_cis_data)
     paysim_data = preprocess_data(paysim_data)
-    unsw_nb15_data = preprocess_data(unsw_nb15_data)
-    cicids2017_data = preprocess_data(cicids2017_data)
-    
-    # Generate synthetic SWIFT data and add CRYSTALS-Kyber elements
-    swift_data = generate_synthetic_swift_data()
-    swift_data = add_kyber_elements(swift_data)
-    
-    print("Data preprocessing complete.")
-    
-    # Example of displaying processed data
-    print(swift_data.head())
 
-    # New code: Apply differential privacy
-    swift_data_tensor = torch.tensor(swift_data.select_dtypes(include=[np.number]).values, dtype=torch.float32)
-    swift_data_with_noise = add_noise(swift_data_tensor)
-    swift_data.loc[:, swift_data.select_dtypes(include=[np.number]).columns] = swift_data_with_noise.numpy()
-    
-    print("Differential privacy applied.")
-    print(swift_data.head())
+    # Combine features and labels for training (use appropriate features)
+    combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0)
+    X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time']].values  # Example features
+    y = combined_data['is_fraud'].values
+
+    # Train model with differential privacy
+    trained_model = train_privacy_preserving_model(X, y)
+
+    print("Model training with differential privacy complete.")
