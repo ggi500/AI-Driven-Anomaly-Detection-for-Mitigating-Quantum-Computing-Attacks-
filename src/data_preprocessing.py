@@ -11,7 +11,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 from opacus import PrivacyEngine  # Opacus for differential privacy in training
 
-# Load datasets (remains unchanged)
+# Load datasets 
 def load_ieee_cis_data(filepath):
     try:
         df = pd.read_csv(filepath)
@@ -28,7 +28,7 @@ def load_paysim_data(filepath):
         return None
     return df
 
-# Data Preprocessing (remains unchanged)
+# Data Preprocessing 
 def preprocess_data(df):
     if df is None:
         return None
@@ -64,7 +64,7 @@ def engineer_features(df):
     df['qr_decapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     return df
 
-# Simulating transactions (unchanged)
+# Simulating transactions 
 def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=10000):
     swift_transactions = []
     
@@ -87,7 +87,7 @@ def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=1
     
     return pd.DataFrame(swift_transactions)
 
-# Synthetic SWIFT Data Generator (unchanged)
+# Synthetic SWIFT Data Generator 
 def generate_synthetic_swift_data(n_samples=1000):
     faker = Faker()
     data = {
@@ -100,7 +100,7 @@ def generate_synthetic_swift_data(n_samples=1000):
     df = pd.DataFrame(data)
     return df
 
-# Kyber Operations (unchanged)
+# Kyber Operations 
 def perform_kyber_operations():
     public_key, secret_key = kyber512.keypair()
     
@@ -161,16 +161,30 @@ def train_privacy_preserving_model(train_data, target_data, batch_size=32, epoch
     return model
 
 if __name__ == "__main__":
-    # Load datasets (unchanged)
+    # Load datasets 
     ieee_cis_data = load_ieee_cis_data('Data/IEEE-CIS-Fraud-Detection-master/train_transaction.csv')
     paysim_data = load_paysim_data('Data/PaySim-master/PS_20174392719_1491204439457_log.csv')
     
-    # Preprocess datasets (unchanged)
+    # Preprocess datasets 
     ieee_cis_data = preprocess_data(ieee_cis_data)
     paysim_data = preprocess_data(paysim_data)
+    
+    # Engineer additional features
+    ieee_cis_data = engineer_features(ieee_cis_data)
+    paysim_data = engineer_features(paysim_data)
 
+    # Check if the required columns exist
+    if not all(col in ieee_cis_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
+        print("Error: Missing required columns in IEEE-CIS data")
+    if not all(col in paysim_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
+        print("Error: Missing required columns in PaySim data")
+    
     # Combine features and labels for training (use appropriate features)
     combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0)
+    
+    # Ensure combined data contains the required columns
+    print(combined_data.head())  # Debugging step
+
     X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time']].values  # Example features
     y = combined_data['is_fraud'].values
 
