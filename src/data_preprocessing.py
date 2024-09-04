@@ -13,6 +13,9 @@ from opacus import PrivacyEngine  # Opacus for differential privacy in training
 
 # Load datasets 
 def load_ieee_cis_data(filepath):
+    if not os.path.exists(filepath):
+        print(f"Error: {filepath} does not exist.")
+        return None
     try:
         df = pd.read_csv(filepath)
     except FileNotFoundError:
@@ -21,6 +24,9 @@ def load_ieee_cis_data(filepath):
     return df
 
 def load_paysim_data(filepath):
+    if not os.path.exists(filepath):
+        print(f"Error: {filepath} does not exist.")
+        return None
     try:
         df = pd.read_csv(filepath)
     except FileNotFoundError:
@@ -102,13 +108,15 @@ def generate_synthetic_swift_data(n_samples=1000):
 
 # Kyber Operations 
 def perform_kyber_operations():
-    public_key, secret_key = kyber512.keypair()
-    
-    message = np.random.bytes(32)
-    ciphertext, shared_secret_enc = kyber512.encrypt(public_key, message)
-    
-    shared_secret_dec = kyber512.decrypt(secret_key, ciphertext)
-    
+    try:
+        public_key, secret_key = kyber512.keypair()
+        message = np.random.bytes(32)
+        ciphertext, shared_secret_enc = kyber512.encrypt(public_key, message)
+        shared_secret_dec = kyber512.decrypt(secret_key, ciphertext)
+    except Exception as e:
+        print(f"Error during Kyber operations: {e}")
+        return {}
+
     return {
         'public_key': public_key.hex(),
         'ciphertext': ciphertext.hex(),
@@ -119,11 +127,17 @@ def perform_kyber_operations():
 
 # Differentially Private Model Training with Opacus
 def train_privacy_preserving_model(train_data, target_data, batch_size=32, epochs=5):
-    # Define a simple model (can be extended)
+    # Ensure no NaN values in the data
+    if np.isnan(train_data).any() or np.isnan(target_data).any():
+        raise ValueError("Input data contains NaNs. Please handle missing values before training.")
+    
+    # Define a more complex model (you can extend this further)
     model = nn.Sequential(
         nn.Linear(train_data.shape[1], 128),
         nn.ReLU(),
-        nn.Linear(128, 1)
+        nn.Linear(128, 64),
+        nn.ReLU(),
+        nn.Linear(64, 1)
     )
     
     # Create DataLoader
@@ -157,6 +171,10 @@ def train_privacy_preserving_model(train_data, target_data, batch_size=32, epoch
 
         print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(train_loader)}")
 
+    # Display privacy consumption
+    epsilon, _ = privacy_engine.get_epsilon(delta=1e-5)
+    print(f"Training completed with epsilon: {epsilon}")
+
     # Return the trained model
     return model
 
@@ -165,26 +183,43 @@ if __name__ == "__main__":
     ieee_cis_data = load_ieee_cis_data('Data/IEEE-CIS-Fraud-Detection-master/train_transaction.csv')
     paysim_data = load_paysim_data('Data/PaySim-master/PS_20174392719_1491204439457_log.csv')
     
+    # Check if data loading was successful
+    if ieee_cis_data is None or paysim_data is None:
+        print("Error: One of the datasets failed to load. Exiting...")
+        exit(1)
+
     # Preprocess datasets 
     ieee_cis_data = preprocess_data(ieee_cis_data)
     paysim_data = preprocess_data(paysim_data)
+
+    # Check if preprocessing was successful
+    if ieee_cis_data is None or paysim_data is None:
+        print("Error: Data preprocessing failed. Exiting...")
+        exit(1)
     
     # Engineer additional features
     ieee_cis_data = engineer_features(ieee_cis_data)
     paysim_data = engineer_features(paysim_data)
 
     # Check if the required columns exist
-    if not all(col in ieee_cis_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
-        print("Error: Missing required columns in IEEE-CIS data")
-    if not all(col in paysim_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
-        print("Error: Missing required columns in PaySim data")
-    
+    try:
+        if not all(col in ieee_cis_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
+            raise ValueError("Error: Missing required columns in IEEE-CIS data")
+        if not all(col in paysim_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
+            raise ValueError("Error: Missing required columns in PaySim data")
+    except ValueError as e:
+        print(e)
+        print("The program will now exit due to the missing columns.")
+        exit(1)
+
     # Combine features and labels for training (use appropriate features)
     combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0)
-    
+
     # Ensure combined data contains the required columns
+    print("Combined data preview:")
     print(combined_data.head())  # Debugging step
 
+    # Split features and target
     X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time']].values  # Example features
     y = combined_data['is_fraud'].values
 
