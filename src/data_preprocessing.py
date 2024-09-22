@@ -10,6 +10,7 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 from opacus import PrivacyEngine  # Opacus for differential privacy in training
+from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
 
 # Load datasets 
 def load_ieee_cis_data(filepath):
@@ -63,12 +64,51 @@ def normalize_data(df, method='minmax'):
     df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
     return df
 
+# Attack-related feature engineering
+def engineer_attack_features(df):
+    """
+    Engineer features related to cryptographic attack behaviors.
+    
+    Parameters:
+    - df: pandas DataFrame, the input dataset.
+
+    Returns:
+    - df: pandas DataFrame, with new engineered attack-related features.
+    """
+    df['failed_decapsulation_attempts'] = np.random.randint(0, 5, size=len(df))
+    df['repeated_access_attempts'] = np.random.randint(0, 10, size=len(df))
+    df['network_traffic_burst'] = np.random.choice([0, 1], size=len(df))  # Binary feature indicating traffic spike
+    return df
+
+# Cryptographic and Attack Feature Engineering
 def engineer_features(df):
+    """
+    Engineer features for quantum-resistant cryptographic operations and potential cryptographic attacks.
+    
+    Parameters:
+    - df: pandas DataFrame, the input dataset.
+
+    Returns:
+    - df: pandas DataFrame, with new engineered cryptographic and attack-related features.
+    """
+    # Cryptographic feature engineering
     df['qr_key_size'] = np.random.choice([3328, 4096, 6528], size=len(df))
-    df['qr_signature_length'] = np.random.randint(2000, 4000, size=len(df))
+    df['qr_signature_length'] = np.random.randint(2000, 4000, size(len(df)))
     df['qr_encapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     df['qr_decapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
+    
+    # Attack-related feature engineering
+    df = engineer_attack_features(df)  # Add features like failed decapsulation attempts, access attempts, etc.
+    
     return df
+
+# Prepare sequences for LSTM input
+def prepare_sequences(data, sequence_length):
+    X, y = [], []
+    for i in range(len(data) - sequence_length):
+        X.append(data[i:i + sequence_length])
+        y.append(data[i + sequence_length])
+    return np.array(X), np.array(y)
 
 # Simulating transactions 
 def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=10000):
@@ -131,7 +171,7 @@ def train_privacy_preserving_model(train_data, target_data, batch_size=32, epoch
     if np.isnan(train_data).any() or np.isnan(target_data).any():
         raise ValueError("Input data contains NaNs. Please handle missing values before training.")
     
-    # Define a more complex model (you can extend this further)
+    # Define a more complex model
     model = nn.Sequential(
         nn.Linear(train_data.shape[1], 128),
         nn.ReLU(),
@@ -178,52 +218,30 @@ def train_privacy_preserving_model(train_data, target_data, batch_size=32, epoch
     # Return the trained model
     return model
 
+# In the main function, preprocess and sort the data by timestamp
 if __name__ == "__main__":
     # Load datasets 
     ieee_cis_data = load_ieee_cis_data('Data/IEEE-CIS-Fraud-Detection-master/train_transaction.csv')
     paysim_data = load_paysim_data('Data/PaySim-master/PS_20174392719_1491204439457_log.csv')
-    
-    # Check if data loading was successful
-    if ieee_cis_data is None or paysim_data is None:
-        print("Error: One of the datasets failed to load. Exiting...")
-        exit(1)
 
     # Preprocess datasets 
     ieee_cis_data = preprocess_data(ieee_cis_data)
     paysim_data = preprocess_data(paysim_data)
 
-    # Check if preprocessing was successful
-    if ieee_cis_data is None or paysim_data is None:
-        print("Error: Data preprocessing failed. Exiting...")
-        exit(1)
-    
-    # Engineer additional features
+    # Engineer cryptographic and attack-related features
     ieee_cis_data = engineer_features(ieee_cis_data)
     paysim_data = engineer_features(paysim_data)
 
-    # Check if the required columns exist
-    try:
-        if not all(col in ieee_cis_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
-            raise ValueError("Error: Missing required columns in IEEE-CIS data")
-        if not all(col in paysim_data.columns for col in ['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time', 'is_fraud']):
-            raise ValueError("Error: Missing required columns in PaySim data")
-    except ValueError as e:
-        print(e)
-        print("The program will now exit due to the missing columns.")
-        exit(1)
+    # Combine data and sort by timestamp for LSTM
+    combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0).sort_values(by='timestamp')
 
-    # Combine features and labels for training (use appropriate features)
-    combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0)
-
-    # Ensure combined data contains the required columns
-    print("Combined data preview:")
-    print(combined_data.head())  # Debugging step
-
-    # Split features and target
-    X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time']].values  # Example features
+    # Select features for LSTM
+    X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time',
+                       'failed_decapsulation_attempts', 'repeated_access_attempts', 'network_traffic_burst']].values
     y = combined_data['is_fraud'].values
 
-    # Train model with differential privacy
-    trained_model = train_privacy_preserving_model(X, y)
+    # Prepare sequences for LSTM
+    sequence_length = 10  # Adjust based on the required sequence length
+    X_seq, y_seq = prepare_sequences(X, sequence_length)
 
-    print("Model training with differential privacy complete.")
+    # Continue with your model training process

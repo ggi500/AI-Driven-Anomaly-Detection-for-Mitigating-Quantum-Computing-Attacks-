@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 from pqcrypto.kem import kyber512
 
 def analyze_key_sizes(n_samples=100):
@@ -75,6 +76,26 @@ def perform_kyber_operations():
         'key_size': len(public_key)
     }
 
+def preprocess_cryptographic_features():
+    """
+    Preprocess the cryptographic features by analyzing key sizes, encapsulation, and decapsulation times.
+
+    Returns:
+    np.array: Combined and normalized cryptographic features.
+    """
+    key_sizes = analyze_key_sizes()
+    encapsulation_times = analyze_encapsulation_times()
+    decapsulation_times = analyze_decapsulation_times()
+
+    # Normalize the cryptographic features
+    key_sizes = StandardScaler().fit_transform(np.array(key_sizes).reshape(-1, 1))
+    encapsulation_times = StandardScaler().fit_transform(np.array(encapsulation_times).reshape(-1, 1))
+    decapsulation_times = StandardScaler().fit_transform(np.array(decapsulation_times).reshape(-1, 1))
+
+    # Combine cryptographic features into a feature array
+    crypto_features = np.hstack((key_sizes, encapsulation_times, decapsulation_times))
+    return crypto_features
+
 if __name__ == "__main__":
     # Example usage:
     key_sizes = analyze_key_sizes()
@@ -88,3 +109,8 @@ if __name__ == "__main__":
 
     kyber_details = perform_kyber_operations()
     print(f"CRYSTALS-Kyber Operations: {kyber_details}")
+
+    # Preprocess cryptographic features for anomaly detection
+    crypto_features = preprocess_cryptographic_features()
+    print("Preprocessed cryptographic features:")
+    print(crypto_features)

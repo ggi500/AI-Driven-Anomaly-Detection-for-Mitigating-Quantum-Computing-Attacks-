@@ -1,7 +1,7 @@
 import time
 import tensorflow as tf
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score, confusion_matrix
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score, confusion_matrix, roc_curve, ConfusionMatrixDisplay
 from sklearn.model_selection import KFold, train_test_split
 import numpy as np
 import pandas as pd
@@ -161,6 +161,21 @@ def evaluate_lstm(model, X_test, y_true):
     except Exception as e:
         logger.error(f"Error evaluating LSTM model: {str(e)}")
         return None
+
+# New visualization functions for ROC Curve and Confusion Matrix
+def plot_roc_curve(y_true, y_pred_proba):
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+    plt.plot(fpr, tpr)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve')
+    plt.show()
+
+def plot_confusion_matrix(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot()
+    plt.show()
 
 def k_fold_cross_validation(model_func, X, y, k=5, sequence_length=None):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
@@ -344,3 +359,4 @@ def load_model(filename):
     except Exception as e:
         logger.error(f"Error loading model from {filename}: {str(e)}")
         return None
+

@@ -1,9 +1,11 @@
+import os
 import numpy as np
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 import time
+import pickle
 
 # Utility Function for Profiling
 def profile_code(func, *args):
@@ -12,6 +14,22 @@ def profile_code(func, *args):
     end_time = time.time()
     print(f"Execution time: {end_time - start_time} seconds")
     return result
+
+# Model Saving Functions
+def save_isolation_forest_model(model, version='v1'):
+    """
+    Saves the trained Isolation Forest model to the Models directory.
+    """
+    with open(f'Models/isolation_forest_model_{version}.pkl', 'wb') as file:
+        pickle.dump(model, file)
+    print(f"Isolation Forest model (version: {version}) saved.")
+
+def save_lstm_model(model, version='final'):
+    """
+    Saves the trained LSTM model to the Models directory.
+    """
+    model.save(f'Models/lstm_model_{version}.h5')
+    print(f"LSTM model (version: {version}) saved.")
 
 # Model Adaptation Functions
 def adapt_isolation_forest(data, contamination=0.1):
@@ -27,6 +45,10 @@ def adapt_isolation_forest(data, contamination=0.1):
     """
     clf = IsolationForest(contamination=contamination, random_state=42)
     clf.fit(data)
+    
+    # Save the Isolation Forest model after training
+    save_isolation_forest_model(clf)
+    
     return clf
 
 def adapt_lstm(data, sequence_length, epochs=10, batch_size=32):
@@ -47,6 +69,7 @@ def adapt_lstm(data, sequence_length, epochs=10, batch_size=32):
         tf.keras.layers.Dense(1)
     ])
     model.compile(optimizer='adam', loss='mse')
+    
     return model
 
 def prepare_sequences(data, sequence_length):
@@ -118,6 +141,41 @@ def evaluate_ensemble(X_test, y_true, isolation_forest_model, lstm_model, sequen
     
     return {"precision": precision, "recall": recall, "f1": f1}
 
+# ROC-AUC Evaluation
+def evaluate_roc_auc(model, X_test, y_true):
+    """
+    Evaluates the ROC-AUC score for models using predict_proba.
+    
+    Parameters:
+    - model: trained classifier model that supports predict_proba.
+    - X_test: numpy array, test data.
+    - y_true: numpy array, true labels.
+    
+    Returns:
+    - roc_auc: float, ROC-AUC score.
+    """
+    y_pred_proba = model.predict_proba(X_test)[:, 1]  # For classifiers with predict_proba
+    roc_auc = roc_auc_score(y_true, y_pred_proba)
+    return roc_auc
+
+# Add this function to model_adaptation.py
+def ensemble_model(isolation_forest_model, lstm_model, X_test):
+    """
+    Combines predictions from Isolation Forest and LSTM for ensemble decision-making.
+    """
+    # Get predictions from Isolation Forest
+    isolation_forest_preds = isolation_forest_model.predict(X_test)
+    
+    # Prepare LSTM data
+    X_seq, _ = prepare_sequences(X_test, sequence_length=5)
+    
+    # Get predictions from LSTM
+    lstm_preds = lstm_model.predict(X_seq)
+    
+    # Ensemble decision (soft voting or averaging)
+    ensemble_preds = (isolation_forest_preds + lstm_preds) / 2
+    return ensemble_preds
+
 # Crypto Analysis Integration
 def evaluate_crypto_performance():
     from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
@@ -145,10 +203,17 @@ if __name__ == "__main__":
     X_train_seq, X_test_seq, y_train_seq, y_test_seq = train_test_split(X_seq, y_seq, test_size=0.2, random_state=42)
     lstm_model.fit(X_train_seq, y_train_seq, epochs=10, batch_size=32)
     
+    # Save LSTM model after training
+    save_lstm_model(lstm_model)
+    
     # Ensemble evaluation
     X_train, X_test, y_train, y_test = train_test_split(data, np.random.randint(0, 2, size=1000), test_size=0.2, random_state=42)
     ensemble_results = profile_code(evaluate_ensemble, X_test, y_test, isolation_forest_model, lstm_model, sequence_length)
     print("Ensemble model evaluation:", ensemble_results)
+
+    # Evaluate ROC-AUC for the Isolation Forest model
+    roc_auc = profile_code(evaluate_roc_auc, isolation_forest_model, X_test, y_test)
+    print(f"Isolation Forest ROC-AUC: {roc_auc}")
     
     # Evaluate cryptographic performance
     profile_code(evaluate_crypto_performance)
