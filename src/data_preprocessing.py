@@ -93,7 +93,7 @@ def engineer_features(df):
     """
     # Cryptographic feature engineering
     df['qr_key_size'] = np.random.choice([3328, 4096, 6528], size=len(df))
-    df['qr_signature_length'] = np.random.randint(2000, 4000, size(len(df)))
+    df['qr_signature_length'] = np.random.randint(2000, 4000, size=len(df))
     df['qr_encapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     df['qr_decapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     
@@ -244,4 +244,4 @@ if __name__ == "__main__":
     sequence_length = 10  # Adjust based on the required sequence length
     X_seq, y_seq = prepare_sequences(X, sequence_length)
 
-    # Continue with your model training process
+    # Continue with model training process
