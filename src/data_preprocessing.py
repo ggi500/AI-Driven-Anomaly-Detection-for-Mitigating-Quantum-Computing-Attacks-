@@ -1,4 +1,4 @@
-import os
+import os  
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -35,6 +35,13 @@ def load_paysim_data(filepath):
         return None
     return df
 
+# Step 1: Check and Sort Data for Time-Series Structure
+def check_time_series_structure(df):
+    if 'timestamp' not in df.columns:
+        raise ValueError("Dataset must contain a 'timestamp' column for LSTM sequence preparation.")
+    df = df.sort_values(by='timestamp')  # Ensure the data is sorted by time
+    return df
+
 # Data Preprocessing 
 def preprocess_data(df):
     if df is None:
@@ -52,6 +59,7 @@ def clean_data(df):
             df[column] = df[column].fillna(df[column].median())
     return df
 
+# Step 2: Preprocess the Data Using MinMaxScaler or StandardScaler
 def normalize_data(df, method='minmax'):
     if method == 'minmax':
         scaler = MinMaxScaler()
@@ -228,12 +236,19 @@ if __name__ == "__main__":
     ieee_cis_data = preprocess_data(ieee_cis_data)
     paysim_data = preprocess_data(paysim_data)
 
+    # Step 1: Check and Sort the Data for Time-Series Structure
+    ieee_cis_data = check_time_series_structure(ieee_cis_data)
+    paysim_data = check_time_series_structure(paysim_data)
+
     # Engineer cryptographic and attack-related features
     ieee_cis_data = engineer_features(ieee_cis_data)
     paysim_data = engineer_features(paysim_data)
 
     # Combine data and sort by timestamp for LSTM
-    combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0).sort_values(by='timestamp')
+    combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0)
+
+    # Step 2: Preprocess the combined dataset
+    combined_data = normalize_data(combined_data)
 
     # Select features for LSTM
     X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time',
@@ -244,4 +259,4 @@ if __name__ == "__main__":
     sequence_length = 10  # Adjust based on the required sequence length
     X_seq, y_seq = prepare_sequences(X, sequence_length)
 
-    # Continue with model training process
+    # Continue with the model training process
