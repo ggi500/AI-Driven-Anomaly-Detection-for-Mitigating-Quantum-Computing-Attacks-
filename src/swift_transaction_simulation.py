@@ -5,7 +5,7 @@ from datetime import datetime
 from cryptography.fernet import Fernet
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve, auc
 from joblib import load  # For loading Isolation Forest
 import tensorflow as tf  # For loading LSTM
 from crypto_analysis import perform_kyber_operations
@@ -20,6 +20,34 @@ from opacus import PrivacyEngine  # Opacus for differential privacy in training
 # Generate a key and cipher suite
 key = Fernet.generate_key()
 cipher_suite = Fernet(key)
+
+# Visualization functions
+def plot_confusion_matrix(y_true, y_pred, title="Confusion Matrix"):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
+                xticklabels=['No Anomaly', 'Anomaly'], yticklabels=['No Anomaly', 'Anomaly'])
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title(title)
+    plt.savefig('ensemble_confusion_matrix.png')
+    plt.close()
+
+def plot_roc_curve(y_true, y_pred_prob, title="ROC Curve"):
+    fpr, tpr, _ = roc_curve(y_true, y_pred_prob)
+    roc_auc = auc(fpr, tpr)
+    
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(title)
+    plt.legend(loc="lower right")
+    plt.savefig('ensemble_roc_curve.png')
+    plt.close()
 
 # Load datasets 
 def load_ieee_cis_data(filepath):
@@ -83,15 +111,6 @@ def normalize_data(df, method='minmax'):
 
 # Attack-related feature engineering
 def engineer_attack_features(df):
-    """
-    Engineer features related to cryptographic attack behaviors.
-    
-    Parameters:
-    - df: pandas DataFrame, the input dataset.
-
-    Returns:
-    - df: pandas DataFrame, with new engineered attack-related features.
-    """
     df['failed_decapsulation_attempts'] = np.random.randint(0, 5, size=len(df))
     df['repeated_access_attempts'] = np.random.randint(0, 10, size=len(df))
     df['network_traffic_burst'] = np.random.choice([0, 1], size=len(df))  # Binary feature indicating traffic spike
@@ -99,24 +118,12 @@ def engineer_attack_features(df):
 
 # Cryptographic and Attack Feature Engineering
 def engineer_features(df):
-    """
-    Engineer features for quantum-resistant cryptographic operations and potential cryptographic attacks.
-    
-    Parameters:
-    - df: pandas DataFrame, the input dataset.
-
-    Returns:
-    - df: pandas DataFrame, with new engineered cryptographic and attack-related features.
-    """
-    # Cryptographic feature engineering
     df['qr_key_size'] = np.random.choice([3328, 4096, 6528], size=len(df))
     df['qr_signature_length'] = np.random.randint(2000, 4000, size=len(df))
     df['qr_encapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     df['qr_decapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     
-    # Attack-related feature engineering
-    df = engineer_attack_features(df)  # Add features like failed decapsulation attempts, access attempts, etc.
-    
+    df = engineer_attack_features(df)
     return df
 
 # Prepare sequences for LSTM input
@@ -143,7 +150,6 @@ def simulate_swift_transactions(n_transactions=1000):
             'amount_encrypted': cipher_suite.encrypt(str(np.random.uniform(1000, 100000)).encode())
         }
 
-        # Integrate CRYSTALS-Kyber operations
         kyber_data = perform_kyber_operations()
         transaction.update(kyber_data)
 
@@ -219,4 +225,14 @@ if __name__ == "__main__":
         print(f"Error during predictions: {e}")
         exit(1)
 
-    # Continue with the model training process
+    # Ensemble predictions
+    ensemble_preds = ensemble_model(isolation_forest_model, lstm_model, X)
+
+    # Visualize confusion matrix and ROC curve
+    y_true = combined_data['is_fraud']
+    y_pred = np.round(ensemble_preds)
+    
+    plot_confusion_matrix(y_true, y_pred, title="Ensemble Confusion Matrix")
+    plot_roc_curve(y_true, ensemble_preds, title="Ensemble ROC Curve")
+
+    print("Confusion matrix and ROC curve saved as images.")
