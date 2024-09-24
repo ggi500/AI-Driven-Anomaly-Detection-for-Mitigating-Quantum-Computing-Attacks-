@@ -1,4 +1,4 @@
-import os
+import os  
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
@@ -6,6 +6,9 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 import time
 import pickle
+import joblib
+from tensorflow.keras import Sequential
+from tensorflow.keras.layers import LSTM, Dense
 
 # Utility Function for Profiling
 def profile_code(func, *args):
@@ -30,6 +33,27 @@ def save_lstm_model(model, version='final'):
     """
     model.save(f'Models/lstm_model_{version}.h5')
     print(f"LSTM model (version: {version}) saved.")
+
+# Function to save Isolation Forest
+def train_and_save_isolation_forest(X_train, model_save_path):
+    model = IsolationForest(contamination=0.1, random_state=42)
+    model.fit(X_train)
+    # Save model to `trained_models` directory
+    joblib.dump(model, model_save_path)
+    print(f"Isolation Forest model saved at {model_save_path}")
+
+# Function to save LSTM model
+def train_and_save_lstm(X_train, y_train, sequence_length, model_save_path):
+    model = Sequential([
+        LSTM(64, activation='relu', input_shape=(sequence_length, X_train.shape[2])),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    model.fit(X_train, y_train, epochs=10, batch_size=32)
+
+    # Save model to `trained_models` directory
+    model.save(model_save_path)
+    print(f"LSTM model saved at {model_save_path}")
 
 # Model Adaptation Functions
 def adapt_isolation_forest(data, contamination=0.1):
@@ -194,20 +218,19 @@ if __name__ == "__main__":
     data = np.random.rand(1000, 10)  # 1000 samples, 10 features
     sequence_length = 5
     
-    # Isolation Forest
-    isolation_forest_model = profile_code(adapt_isolation_forest, data)
-    
-    # LSTM
+    # Train and save Isolation Forest model
+    X_train, X_test = train_test_split(data, test_size=0.2, random_state=42)
+    train_and_save_isolation_forest(X_train, 'Models/trained_models/trained_isolation_forest_model.pkl')
+
+    # Prepare data for LSTM and train LSTM model
     X_seq, y_seq = prepare_sequences(data, sequence_length)
-    lstm_model = profile_code(adapt_lstm, X_seq, sequence_length)
     X_train_seq, X_test_seq, y_train_seq, y_test_seq = train_test_split(X_seq, y_seq, test_size=0.2, random_state=42)
-    lstm_model.fit(X_train_seq, y_train_seq, epochs=10, batch_size=32)
+    train_and_save_lstm(X_train_seq, y_train_seq, sequence_length, 'Models/trained_models/trained_lstm_model.h5')
     
     # Save LSTM model after training
     save_lstm_model(lstm_model)
     
     # Ensemble evaluation
-    X_train, X_test, y_train, y_test = train_test_split(data, np.random.randint(0, 2, size=1000), test_size=0.2, random_state=42)
     ensemble_results = profile_code(evaluate_ensemble, X_test, y_test, isolation_forest_model, lstm_model, sequence_length)
     print("Ensemble model evaluation:", ensemble_results)
 
