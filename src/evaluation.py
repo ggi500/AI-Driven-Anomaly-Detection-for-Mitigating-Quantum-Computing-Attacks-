@@ -45,87 +45,33 @@ def profile_code(func, *args):
     return result
 
 # New Metrics: Mean Average Precision (MAP) and Normalized Discounted Cumulative Gain (NDCG)
-
-# Mean Average Precision (MAP)
 def mean_average_precision(y_true, y_pred):
-    """
-    Compute Mean Average Precision (MAP).
-    
-    Parameters:
-    y_true: Ground truth binary labels
-    y_pred: Predicted scores or probabilities
-    
-    Returns:
-    float: Mean Average Precision (MAP) score
-    """
     precisions, recalls, _ = precision_recall_curve(y_true, y_pred)
     average_precision = np.sum((recalls[:-1] - recalls[1:]) * precisions[:-1])
     return average_precision
 
-# Discounted Cumulative Gain (DCG)
 def dcg_score(y_true, y_pred, k=10):
-    """
-    Compute Discounted Cumulative Gain (DCG).
-    
-    Parameters:
-    y_true: Ground truth binary labels
-    y_pred: Predicted scores or probabilities
-    k: Rank position to evaluate
-    
-    Returns:
-    float: DCG score
-    """
     order = np.argsort(y_pred)[::-1]
     y_true = np.take(y_true, order[:k])
     gains = 2 ** y_true - 1
     discounts = np.log2(np.arange(1, len(y_true) + 1) + 1)
     return np.sum(gains / discounts)
 
-# Normalized Discounted Cumulative Gain (NDCG)
 def ndcg_score(y_true, y_pred, k=10):
-    """
-    Compute Normalized Discounted Cumulative Gain (NDCG).
-    
-    Parameters:
-    y_true: Ground truth binary labels
-    y_pred: Predicted scores or probabilities
-    k: Rank position to evaluate
-    
-    Returns:
-    float: NDCG score
-    """
     dcg = dcg_score(y_true, y_pred, k)
     ideal_dcg = dcg_score(y_true, y_true, k)
     return dcg / ideal_dcg if ideal_dcg > 0 else 0
 
-# Data Loading Functions
-def load_ieee_cis_data(filepath):
-    try:
-        df = pd.read_csv(filepath)
-        logger.info(f"Successfully loaded IEEE-CIS data from {filepath}")
-        return df
-    except FileNotFoundError:
-        logger.error(f"Error: {filepath} not found.")
-        return None
-
-def load_paysim_data(filepath):
-    try:
-        df = pd.read_csv(filepath)
-        logger.info(f"Successfully loaded PaySim data from {filepath}")
-        return df
-    except FileNotFoundError:
-        logger.error(f"Error: {filepath} not found.")
-        return None
+# Define or Import adapt_lstm
+def adapt_lstm(data, sequence_length, epochs=10, batch_size=32):
+    model = tf.keras.Sequential([
+        tf.keras.layers.LSTM(50, activation='relu', input_shape=(sequence_length, data.shape[2])),
+        tf.keras.layers.Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    return model
 
 # Data Preprocessing Functions
-def preprocess_data(df):
-    if df is None:
-        logger.warning("Received None dataframe for preprocessing. Returning None.")
-        return None
-    df = clean_data(df)
-    df = normalize_data(df)
-    return df
-
 def clean_data(df):
     original_shape = df.shape
     df = df.drop_duplicates()
@@ -138,54 +84,21 @@ def clean_data(df):
     return df
 
 def normalize_data(df, method='minmax'):
-    if method == 'minmax':
-        scaler = MinMaxScaler()
-    elif method == 'zscore':
-        scaler = StandardScaler()
-    else:
-        raise ValueError("Invalid normalization method. Choose 'minmax' or 'zscore'.")
-    
+    scaler = MinMaxScaler() if method == 'minmax' else StandardScaler()
     numerical_columns = df.select_dtypes(include=[np.number]).columns
     df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
     logger.info(f"Normalized data using {method} method")
     return df
 
-def engineer_features(df):
-    df['qr_key_size'] = np.random.choice([3328, 4096, 6528], size=len(df))
-    df['qr_signature_length'] = np.random.randint(2000, 4000, size=len(df))
-    df['qr_encapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
-    df['qr_decapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
-    logger.info("Engineered new features for quantum resistance analysis")
-    return df
-
-# Model Adaptation Functions
-def adapt_isolation_forest(data, contamination=0.1):
-    clf = IsolationForest(contamination=contamination, random_state=42)
-    clf.fit(data)
-    logger.info("Adapted Isolation Forest model")
-    return clf
-
-def adapt_lstm(data, sequence_length, epochs=10, batch_size=32):
-    model = tf.keras.Sequential([
-        tf.keras.layers.LSTM(50, activation='relu', input_shape=(sequence_length, data.shape[2])),
-        tf.keras.layers.Dense(1)
-    ])
-    model.compile(optimizer='adam', loss='mse')
-    logger.info("Adapted LSTM model")
-    return model
-
-def prepare_sequences(data, sequence_length):
-    X = []
-    y = []
-    for i in range(len(data) - sequence_length):
-        X.append(data[i:(i + sequence_length)])
-        y.append(data[i + sequence_length])
-    return np.array(X), np.array(y)
-
-# Evaluation Functions (Now include MAP and NDCG)
+# Evaluation Functions (Now include timing for predictions)
 def evaluate_isolation_forest(model, X_test, y_true):
     try:
+        start_time = time.time()  # Start timer for prediction
         y_pred = model.predict(X_test)
+        end_time = time.time()  # End timer
+        prediction_time = end_time - start_time
+        logger.info(f"Prediction time for Isolation Forest: {prediction_time} seconds")  # Log time
+        
         y_pred_binary = [1 if x == 1 else -1 for x in y_pred]
         
         precision = precision_score(y_true, y_pred_binary)
@@ -205,7 +118,12 @@ def evaluate_isolation_forest(model, X_test, y_true):
 
 def evaluate_lstm(model, X_test, y_true):
     try:
+        start_time = time.time()  # Start timer for prediction
         y_pred = model.predict(X_test)
+        end_time = time.time()  # End timer
+        prediction_time = end_time - start_time
+        logger.info(f"Prediction time for LSTM: {prediction_time} seconds")  # Log time
+
         mse = np.mean((y_true - y_pred)**2)
         
         threshold = np.mean(mse) + 2 * np.std(mse)
@@ -221,7 +139,7 @@ def evaluate_lstm(model, X_test, y_true):
         logger.error(f"Error evaluating LSTM model: {str(e)}")
         return None
 
-# ROC Curve Plotting
+# Visualization Functions
 def plot_roc_curve(y_true, y_pred_proba):
     fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
     plt.plot(fpr, tpr)
@@ -230,19 +148,20 @@ def plot_roc_curve(y_true, y_pred_proba):
     plt.title('ROC Curve')
     plt.show()
 
-# Confusion Matrix Plotting
 def plot_confusion_matrix(y_true, y_pred):
     cm = confusion_matrix(y_true, y_pred)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot()
     plt.show()
-# Utility Function for Profiling
-def profile_code(func, *args):
-    start_time = time.time()
-    result = func(*args)
-    end_time = time.time()
-    logger.info(f"Execution time for {func.__name__}: {end_time - start_time} seconds")
-    return result
+
+# Prepare sequences for LSTM
+def prepare_sequences(data, sequence_length):
+    X = []
+    y = []
+    for i in range(len(data) - sequence_length):
+        X.append(data[i:(i + sequence_length)])
+        y.append(data[i + sequence_length])
+    return np.array(X), np.array(y)
 
 # k-fold Cross-validation
 def k_fold_cross_validation(model_func, X, y, k=5, sequence_length=None):
@@ -305,6 +224,7 @@ def evaluate_crypto_performance():
     logger.info(f"Average Encapsulation Time: {np.mean(encapsulation_times)} seconds")
     logger.info(f"Average Decapsulation Time: {np.mean(decapsulation_times)} seconds")
 
+# Synthetic SWIFT Data Generator and Kyber Operations
 # Simulating transactions
 def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=10000):
     swift_transactions = []
@@ -345,11 +265,18 @@ def generate_synthetic_swift_data(n_samples=1000):
 
 # Kyber Operations
 def perform_kyber_operations():
+    """
+    Perform CRYSTALS-Kyber operations, including key generation, encapsulation, and decapsulation.
+    
+    Returns a dictionary containing public key, ciphertext, and shared secrets.
+    """
     public_key, secret_key = kyber512.keypair()
     
+    # Generate random message for encryption
     message = np.random.bytes(32)
     ciphertext, shared_secret_enc = kyber512.encrypt(public_key, message)
     
+    # Decrypt to get the shared secret
     shared_secret_dec = kyber512.decrypt(secret_key, ciphertext)
     
     logger.info("Performed CRYSTALS-Kyber operations")
@@ -375,6 +302,7 @@ def train_privacy_preserving_model(train_data, target_data, batch_size=32, epoch
     optimizer = optim.SGD(model.parameters(), lr=0.01)
     criterion = nn.MSELoss()
 
+    # Opacus Privacy Engine for differential privacy
     privacy_engine = PrivacyEngine(
         model,
         batch_size=batch_size,
@@ -427,5 +355,4 @@ def load_model(filename):
     except Exception as e:
         logger.error(f"Error loading model from {filename}: {str(e)}")
         return None
-
 
