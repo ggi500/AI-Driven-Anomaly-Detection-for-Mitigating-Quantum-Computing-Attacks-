@@ -1,4 +1,4 @@
-import os  
+import os   
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -11,6 +11,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 from opacus import PrivacyEngine  # Opacus for differential privacy in training
 from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
+import time
 
 # Load datasets 
 def load_ieee_cis_data(filepath):
@@ -44,10 +45,14 @@ def check_time_series_structure(df):
 
 # Data Preprocessing 
 def preprocess_data(df):
+    start_time = time.time()  # Start timer
     if df is None:
         return None
     df = clean_data(df)
     df = normalize_data(df)
+    end_time = time.time()  # End timer
+    preprocessing_time = end_time - start_time
+    print(f"Preprocessing time: {preprocessing_time} seconds")  # Log time
     return df
 
 def clean_data(df):
