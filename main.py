@@ -5,14 +5,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from src.model_adaptation import adapt_isolation_forest, adapt_lstm
-from src.evaluation import evaluate_isolation_forest, evaluate_lstm
+from src.evaluation import evaluate_isolation_forest, evaluate_lstm, evaluate_model  # Ensure evaluation imports ranking metrics
 from src.generate_data import generate_and_save_data as generate_data
-from src.evaluation import evaluate_model  # Add this to import the evaluation function for MAP, NDCG, etc.
+from adversarial_testing import evaluate_against_adversarial  # Add this for adversarial testing
+from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times, crypto_specific_metrics  # Import for Kyber-specific metrics
 
 def main():
     print("Generating or loading data...")
     swift_data, time_series_data = generate_data()  # Using the generate_data function to load/generate data
-    
+
     if swift_data is None or time_series_data is None:
         print("Error: Failed to generate or load data.")
         return
@@ -32,7 +33,7 @@ def main():
     # Adapt Isolation Forest model
     print("Adapting Isolation Forest model...")
     isolation_forest_model = adapt_isolation_forest(X_train)
-    
+
     # Adapt LSTM model
     print("Adapting LSTM model...")
     sequence_length = 10  # Adjust this based on your needs
@@ -43,7 +44,7 @@ def main():
     # Evaluate Isolation Forest model
     print("Evaluating Isolation Forest model...")
     isolation_forest_results = evaluate_isolation_forest(isolation_forest_model, X_test, y_test)
-    
+
     # Evaluate LSTM model
     print("Evaluating LSTM model...")
     X_test_lstm = np.array([X_test[i:i+sequence_length] for i in range(len(X_test)-sequence_length)])
@@ -68,9 +69,18 @@ def main():
     for metric, score in results.items():
         print(f"{metric}: {score}")
 
+    # Perform adversarial testing on the LSTM model
+    print("\nPerforming adversarial evaluation on the LSTM model...")
+    epsilon = 0.01  # Perturbation amount for FGSM attack
+    accuracy_adv, fpr_adv = evaluate_against_adversarial(lstm_model, X_test_lstm, y_test_lstm, epsilon=epsilon)
+
+    # Print adversarial evaluation results
+    print(f"\nAdversarial Accuracy: {accuracy_adv}")
+    print(f"Adversarial False Positive Rate: {fpr_adv}")
+
     # Add basic data visualization
     print("\nGenerating basic visualizations...")
-    
+
     # Histogram of transaction amounts
     plt.figure(figsize=(10, 6))
     sns.histplot(swift_data['amount'], bins=50)
@@ -86,6 +96,20 @@ def main():
     plt.title('Correlation Heatmap of Features')
     plt.savefig('Data/correlation_heatmap.png')
     plt.close()
+
+    # CRYSTALS-Kyber-specific metrics
+    print("\nAnalyzing CRYSTALS-Kyber operations...")
+
+    # Collect key sizes, encapsulation times, and decapsulation times
+    key_sizes = analyze_key_sizes()
+    encapsulation_times = analyze_encapsulation_times()
+    decapsulation_times = analyze_decapsulation_times()
+
+    # Calculate and display custom metrics
+    crypto_metrics = crypto_specific_metrics(key_sizes, encapsulation_times, decapsulation_times)
+    print("\nCRYSTALS-Kyber Custom Metrics:")
+    for metric, value in crypto_metrics.items():
+        print(f"{metric}: {value}")
 
     print("Visualizations saved in the Data directory.")
 
