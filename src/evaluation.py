@@ -1,7 +1,7 @@
 import time
 import tensorflow as tf
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score, confusion_matrix, roc_curve, ConfusionMatrixDisplay
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score, confusion_matrix, roc_curve, ConfusionMatrixDisplay, precision_recall_curve
 from sklearn.model_selection import KFold, train_test_split
 import numpy as np
 import pandas as pd
@@ -43,6 +43,60 @@ def profile_code(func, *args):
     end_time = time.time()
     logger.info(f"Execution time for {func.__name__}: {end_time - start_time} seconds")
     return result
+
+# New Metrics: Mean Average Precision (MAP) and Normalized Discounted Cumulative Gain (NDCG)
+
+# Mean Average Precision (MAP)
+def mean_average_precision(y_true, y_pred):
+    """
+    Compute Mean Average Precision (MAP).
+    
+    Parameters:
+    y_true: Ground truth binary labels
+    y_pred: Predicted scores or probabilities
+    
+    Returns:
+    float: Mean Average Precision (MAP) score
+    """
+    precisions, recalls, _ = precision_recall_curve(y_true, y_pred)
+    average_precision = np.sum((recalls[:-1] - recalls[1:]) * precisions[:-1])
+    return average_precision
+
+# Discounted Cumulative Gain (DCG)
+def dcg_score(y_true, y_pred, k=10):
+    """
+    Compute Discounted Cumulative Gain (DCG).
+    
+    Parameters:
+    y_true: Ground truth binary labels
+    y_pred: Predicted scores or probabilities
+    k: Rank position to evaluate
+    
+    Returns:
+    float: DCG score
+    """
+    order = np.argsort(y_pred)[::-1]
+    y_true = np.take(y_true, order[:k])
+    gains = 2 ** y_true - 1
+    discounts = np.log2(np.arange(1, len(y_true) + 1) + 1)
+    return np.sum(gains / discounts)
+
+# Normalized Discounted Cumulative Gain (NDCG)
+def ndcg_score(y_true, y_pred, k=10):
+    """
+    Compute Normalized Discounted Cumulative Gain (NDCG).
+    
+    Parameters:
+    y_true: Ground truth binary labels
+    y_pred: Predicted scores or probabilities
+    k: Rank position to evaluate
+    
+    Returns:
+    float: NDCG score
+    """
+    dcg = dcg_score(y_true, y_pred, k)
+    ideal_dcg = dcg_score(y_true, y_true, k)
+    return dcg / ideal_dcg if ideal_dcg > 0 else 0
 
 # Data Loading Functions
 def load_ieee_cis_data(filepath):
@@ -128,7 +182,7 @@ def prepare_sequences(data, sequence_length):
         y.append(data[i + sequence_length])
     return np.array(X), np.array(y)
 
-# Evaluation Functions
+# Evaluation Functions (Now include MAP and NDCG)
 def evaluate_isolation_forest(model, X_test, y_true):
     try:
         y_pred = model.predict(X_test)
@@ -138,8 +192,13 @@ def evaluate_isolation_forest(model, X_test, y_true):
         recall = recall_score(y_true, y_pred_binary)
         f1 = f1_score(y_true, y_pred_binary)
         
+        # Calculate MAP and NDCG for ranking evaluation
+        y_pred_prob = model.decision_function(X_test)
+        map_score = mean_average_precision(y_true, y_pred_prob)
+        ndcg = ndcg_score(y_true, y_pred_prob)
+        
         logger.info("Evaluated Isolation Forest model")
-        return {"precision": precision, "recall": recall, "f1": f1}
+        return {"precision": precision, "recall": recall, "f1": f1, "map": map_score, "ndcg": ndcg}
     except NotFittedError:
         logger.error("Isolation Forest model is not fitted. Please train the model before evaluation.")
         return None
@@ -162,7 +221,7 @@ def evaluate_lstm(model, X_test, y_true):
         logger.error(f"Error evaluating LSTM model: {str(e)}")
         return None
 
-# New visualization functions for ROC Curve and Confusion Matrix
+# ROC Curve Plotting
 def plot_roc_curve(y_true, y_pred_proba):
     fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
     plt.plot(fpr, tpr)
@@ -171,15 +230,24 @@ def plot_roc_curve(y_true, y_pred_proba):
     plt.title('ROC Curve')
     plt.show()
 
+# Confusion Matrix Plotting
 def plot_confusion_matrix(y_true, y_pred):
     cm = confusion_matrix(y_true, y_pred)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot()
     plt.show()
+# Utility Function for Profiling
+def profile_code(func, *args):
+    start_time = time.time()
+    result = func(*args)
+    end_time = time.time()
+    logger.info(f"Execution time for {func.__name__}: {end_time - start_time} seconds")
+    return result
 
+# k-fold Cross-validation
 def k_fold_cross_validation(model_func, X, y, k=5, sequence_length=None):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
-    metrics = {"precision": [], "recall": [], "f1": []}
+    metrics = {"precision": [], "recall": [], "f1": [], "map": [], "ndcg": []}
     
     for train_index, test_index in kf.split(X):
         X_train, X_test = X[train_index], X[test_index]
@@ -202,8 +270,9 @@ def k_fold_cross_validation(model_func, X, y, k=5, sequence_length=None):
     logger.info(f"Completed {k}-fold cross-validation")
     return avg_metrics
 
+# Bootstrap Sampling
 def bootstrap_sampling(model_func, X, y, n_iterations=100, sequence_length=None):
-    metrics = {"precision": [], "recall": [], "f1": []}
+    metrics = {"precision": [], "recall": [], "f1": [], "map": [], "ndcg": []}
     
     for i in range(n_iterations):
         X_resample, y_resample = resample(X, y, n_samples=len(X), random_state=i)
@@ -236,7 +305,7 @@ def evaluate_crypto_performance():
     logger.info(f"Average Encapsulation Time: {np.mean(encapsulation_times)} seconds")
     logger.info(f"Average Decapsulation Time: {np.mean(decapsulation_times)} seconds")
 
-# Simulating transactions 
+# Simulating transactions
 def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=10000):
     swift_transactions = []
     
@@ -260,7 +329,7 @@ def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=1
     logger.info(f"Simulated {n_transactions} SWIFT transactions")
     return pd.DataFrame(swift_transactions)
 
-# Synthetic SWIFT Data Generator 
+# Synthetic SWIFT Data Generator
 def generate_synthetic_swift_data(n_samples=1000):
     faker = Faker()
     data = {
@@ -274,7 +343,7 @@ def generate_synthetic_swift_data(n_samples=1000):
     logger.info(f"Generated {n_samples} synthetic SWIFT transactions")
     return df
 
-# Kyber Operations 
+# Kyber Operations
 def perform_kyber_operations():
     public_key, secret_key = kyber512.keypair()
     
@@ -338,7 +407,6 @@ def check_for_bias(data):
     logger.info("Performed fairness and bias check")
     return fair_dataset
 
-
 # New function for model serialization
 def save_model(model, filename):
     try:
@@ -359,4 +427,5 @@ def load_model(filename):
     except Exception as e:
         logger.error(f"Error loading model from {filename}: {str(e)}")
         return None
+
 

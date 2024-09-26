@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from src.model_adaptation import adapt_isolation_forest, adapt_lstm
 from src.evaluation import evaluate_isolation_forest, evaluate_lstm
 from src.generate_data import generate_and_save_data as generate_data
+from src.evaluation import evaluate_model  # Add this to import the evaluation function for MAP, NDCG, etc.
 
 def main():
     print("Generating or loading data...")
@@ -49,7 +50,7 @@ def main():
     y_test_lstm = y_test[sequence_length:]
     lstm_results = evaluate_lstm(lstm_model, X_test_lstm, y_test_lstm)
 
-    # Print results
+    # Print results for Isolation Forest and LSTM
     print("\nIsolation Forest Results:")
     for metric, value in isolation_forest_results.items():
         print(f"{metric}: {value}")
@@ -57,6 +58,15 @@ def main():
     print("\nLSTM Results:")
     for metric, value in lstm_results.items():
         print(f"{metric}: {value}")
+
+    # Add evaluation for ranking metrics (MAP, NDCG)
+    print("\nEvaluating model with MAP and NDCG...")
+    results = evaluate_model(lstm_model, X_test_lstm, y_test_lstm)  # This is where you add the evaluation
+    
+    # Print the evaluation results
+    print("Evaluation Results:")
+    for metric, score in results.items():
+        print(f"{metric}: {score}")
 
     # Add basic data visualization
     print("\nGenerating basic visualizations...")
