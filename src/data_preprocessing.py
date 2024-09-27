@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from opacus import PrivacyEngine  # Opacus for differential privacy in training
 from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
 import time
+from swift_transaction_simulation import transform_ieee_to_swift, transform_unsw_to_swift, transform_paysim_to_swift, transform_cic_to_swift
 
 # Load datasets 
 def load_ieee_cis_data(filepath):
@@ -79,15 +80,6 @@ def normalize_data(df, method='minmax'):
 
 # Attack-related feature engineering
 def engineer_attack_features(df):
-    """
-    Engineer features related to cryptographic attack behaviors.
-    
-    Parameters:
-    - df: pandas DataFrame, the input dataset.
-
-    Returns:
-    - df: pandas DataFrame, with new engineered attack-related features.
-    """
     df['failed_decapsulation_attempts'] = np.random.randint(0, 5, size=len(df))
     df['repeated_access_attempts'] = np.random.randint(0, 10, size=len(df))
     df['network_traffic_burst'] = np.random.choice([0, 1], size=len(df))  # Binary feature indicating traffic spike
@@ -95,24 +87,12 @@ def engineer_attack_features(df):
 
 # Cryptographic and Attack Feature Engineering
 def engineer_features(df):
-    """
-    Engineer features for quantum-resistant cryptographic operations and potential cryptographic attacks.
-    
-    Parameters:
-    - df: pandas DataFrame, the input dataset.
-
-    Returns:
-    - df: pandas DataFrame, with new engineered cryptographic and attack-related features.
-    """
-    # Cryptographic feature engineering
     df['qr_key_size'] = np.random.choice([3328, 4096, 6528], size=len(df))
     df['qr_signature_length'] = np.random.randint(2000, 4000, size=len(df))
     df['qr_encapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     df['qr_decapsulation_time'] = np.random.uniform(0.001, 0.005, size=len(df))
     
-    # Attack-related feature engineering
-    df = engineer_attack_features(df)  # Add features like failed decapsulation attempts, access attempts, etc.
-    
+    df = engineer_attack_features(df)
     return df
 
 # Prepare sequences for LSTM input
@@ -231,29 +211,37 @@ def train_privacy_preserving_model(train_data, target_data, batch_size=32, epoch
     # Return the trained model
     return model
 
+# Preprocessing function that leverages transformations from swift_transaction_simulation.py
+def preprocess_pipeline(ieee_df, unsw_df, paysim_df, cic_df):
+    # Apply the transformations to each dataset
+    ieee_transformed = transform_ieee_to_swift(ieee_df)
+    unsw_transformed = transform_unsw_to_swift(unsw_df)
+    paysim_transformed = transform_paysim_to_swift(paysim_df)
+    cic_transformed = transform_cic_to_swift(cic_df)
+    
+    # Combine the transformed datasets
+    combined_data = pd.concat([ieee_transformed, unsw_transformed, paysim_transformed, cic_transformed], axis=0)
+    
+    return combined_data
+
 # In the main function, preprocess and sort the data by timestamp
 if __name__ == "__main__":
-    # Load datasets 
-    ieee_cis_data = load_ieee_cis_data('Data/IEEE-CIS-Fraud-Detection-master/train_transaction.csv')
-    paysim_data = load_paysim_data('Data/PaySim-master/PS_20174392719_1491204439457_log.csv')
+    # Load datasets
+    ieee_df = pd.read_csv('path_to_ieee_fraud_data.csv')
+    unsw_df = pd.read_csv('path_to_unsw_nb15.csv')
+    paysim_df = pd.read_csv('path_to_paysim.csv')
+    cic_df = pd.read_csv('path_to_cic_ids.csv')
+    
+    # Preprocess all datasets
+    combined_data = preprocess_pipeline(ieee_df, unsw_df, paysim_df, cic_df)
+    
+    # Print the head of the combined dataset
+    print(combined_data.head())
 
-    # Preprocess datasets 
-    ieee_cis_data = preprocess_data(ieee_cis_data)
-    paysim_data = preprocess_data(paysim_data)
-
-    # Step 1: Check and Sort the Data for Time-Series Structure
-    ieee_cis_data = check_time_series_structure(ieee_cis_data)
-    paysim_data = check_time_series_structure(paysim_data)
-
-    # Engineer cryptographic and attack-related features
-    ieee_cis_data = engineer_features(ieee_cis_data)
-    paysim_data = engineer_features(paysim_data)
-
-    # Combine data and sort by timestamp for LSTM
-    combined_data = pd.concat([ieee_cis_data, paysim_data], axis=0)
-
-    # Step 2: Preprocess the combined dataset
-    combined_data = normalize_data(combined_data)
+    # Continue with the existing preprocessing steps
+    combined_data = preprocess_data(combined_data)
+    combined_data = check_time_series_structure(combined_data)
+    combined_data = engineer_features(combined_data)
 
     # Select features for LSTM
     X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time',
