@@ -1,4 +1,4 @@
-import os  
+import os
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -17,6 +17,9 @@ from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
 from opacus import PrivacyEngine  # Opacus for differential privacy in training
 
+# Create a Faker instance
+fake = Faker()
+
 # Generate a key and cipher suite
 key = Fernet.generate_key()
 cipher_suite = Fernet(key)
@@ -25,7 +28,7 @@ cipher_suite = Fernet(key)
 def plot_confusion_matrix(y_true, y_pred, title="Confusion Matrix"):
     cm = confusion_matrix(y_true, y_pred)
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, 
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False,
                 xticklabels=['No Anomaly', 'Anomaly'], yticklabels=['No Anomaly', 'Anomaly'])
     plt.xlabel('Predicted')
     plt.ylabel('True')
@@ -134,28 +137,48 @@ def prepare_sequences(data, sequence_length):
         y.append(data[i + sequence_length])
     return np.array(X), np.array(y)
 
+# New validation function
+def check_against_swift_standard(swift_data):
+    expected_fields = ['transaction_id', 'sender_bic', 'receiver_bic', 'amount', 'currency', 'timestamp', 'ordering_customer', 'beneficiary_customer', 'transaction_reference']
+    actual_fields = swift_data.columns.tolist()
+    missing_fields = [field for field in expected_fields if field not in actual_fields]
+    if missing_fields:
+        print(f"\nWarning: The following expected fields are missing from the dataset: {missing_fields}")
+    else:
+        print("\nDataset structure matches expected SWIFT-like transaction fields.")
+    return swift_data
+
 # Simulate SWIFT transactions and integrate CRYSTALS-Kyber operations
 def simulate_swift_transactions(n_transactions=1000):
     transactions = []
     for _ in range(n_transactions):
         transaction = {
             'transaction_id': np.random.randint(100000, 999999),
-            'sender': f'Sender_{np.random.randint(1, 100)}',
-            'receiver': f'Receiver_{np.random.randint(1, 100)}',
+            'sender_bic': f"BIC-{np.random.randint(1000, 9999)}",  # Simulating BIC (SWIFT code)
+            'receiver_bic': f"BIC-{np.random.randint(1000, 9999)}",
             'amount': np.random.uniform(1000, 100000),
             'currency': np.random.choice(['USD', 'EUR', 'GBP']),
             'timestamp': datetime.now(),
+            'ordering_customer': fake.name(),
+            'beneficiary_customer': fake.name(),
             'sender_encrypted': cipher_suite.encrypt(f'Sender_{np.random.randint(1, 100)}'.encode()),
             'receiver_encrypted': cipher_suite.encrypt(f'Receiver_{np.random.randint(1, 100)}'.encode()),
-            'amount_encrypted': cipher_suite.encrypt(str(np.random.uniform(1000, 100000)).encode())
+            'amount_encrypted': cipher_suite.encrypt(str(np.random.uniform(1000, 100000)).encode()),
+            'transaction_reference': f"REF-{np.random.randint(100000, 999999)}",  # Simulating a reference number
         }
 
+        # Perform Kyber operations
         kyber_data = perform_kyber_operations()
         transaction.update(kyber_data)
 
         transactions.append(transaction)
     
-    return pd.DataFrame(transactions)
+    df = pd.DataFrame(transactions)
+    
+    # Add the check here
+    df = check_against_swift_standard(df)
+    
+    return df
 
 # Model monitoring with Isolation Forest
 def monitor_transactions_isolation_forest(transactions, isolation_forest_model):
@@ -172,7 +195,7 @@ def monitor_transactions_lstm(transactions, lstm_model):
     transactions['lstm_anomaly'] = lstm_preds
     return transactions
 
-# New function for ensemble prediction
+# Ensemble prediction function
 def ensemble_model(isolation_forest_model, lstm_model, X_test):
     isolation_forest_preds = isolation_forest_model.predict(X_test)
     X_seq, _ = prepare_sequences(X_test, sequence_length=5)
@@ -180,6 +203,52 @@ def ensemble_model(isolation_forest_model, lstm_model, X_test):
     ensemble_preds = (isolation_forest_preds + lstm_preds) / 2
     return ensemble_preds
 
+# SWIFT transformation functions
+def generate_bic_code():
+    """Generate a random BIC (Bank Identifier Code) for SWIFT messages."""
+    return f"BIC-{np.random.randint(1000, 9999)}"
+
+def transform_ieee_to_swift(df):
+    df['amount'] = df['TransactionAmt']
+    df['currency'] = np.random.choice(['USD', 'EUR', 'GBP', 'JPY', 'CHF'], size=len(df))
+    df['timestamp'] = pd.to_datetime(df['TransactionDT'], unit='s')
+    df['sender_bic'] = df['card1'].apply(lambda x: generate_bic_code())  # Using card1 as sender identifier
+    df['receiver_bic'] = df['card2'].apply(lambda x: generate_bic_code())  # Using card2 as receiver identifier
+    df['transaction_reference'] = [f"REF-{np.random.randint(100000, 999999)}" for _ in range(len(df))]
+    df['ordering_customer'] = df['card1'].apply(lambda x: fake.name())
+    df['beneficiary_customer'] = df['card2'].apply(lambda x: fake.name())
+    return df
+
+def transform_unsw_to_swift(df):
+    df['amount'] = np.random.uniform(1000, 100000, size=len(df))
+    df['currency'] = np.random.choice(['USD', 'EUR', 'GBP', 'JPY', 'CHF'], size=len(df))
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    df['sender_bic'] = df['src_ip'].apply(lambda x: generate_bic_code())  # Using src_ip as sender identifier
+    df['receiver_bic'] = df['dst_ip'].apply(lambda x: generate_bic_code())  # Using dst_ip as receiver identifier
+    df['transaction_reference'] = [f"REF-{np.random.randint(100000, 999999)}" for _ in range(len(df))]
+    df['ordering_customer'] = df['src_ip'].apply(lambda x: fake.name())
+    df['beneficiary_customer'] = df['dst_ip'].apply(lambda x: fake.name())
+    return df
+
+def transform_paysim_to_swift(df):
+    df['currency'] = np.random.choice(['USD', 'EUR', 'GBP', 'JPY', 'CHF'], size=len(df))
+    df['sender_bic'] = df['nameOrig'].apply(lambda x: generate_bic_code())  # Using nameOrig as sender identifier
+    df['receiver_bic'] = df['nameDest'].apply(lambda x: generate_bic_code())  # Using nameDest as receiver identifier
+    df['transaction_reference'] = [f"REF-{np.random.randint(100000, 999999)}" for _ in range(len(df))]
+    df['ordering_customer'] = df['nameOrig'].apply(lambda x: fake.name())
+    df['beneficiary_customer'] = df['nameDest'].apply(lambda x: fake.name())
+    return df
+
+def transform_cic_to_swift(df):
+    df['amount'] = df['Total Fwd Packets'].apply(lambda x: np.random.uniform(1000, 5000) * (x / 100))
+    df['currency'] = np.random.choice(['USD', 'EUR', 'GBP', 'JPY', 'CHF'], size=len(df))
+    df['timestamp'] = pd.to_datetime(df['Flow Duration'], unit='ms', errors='coerce')
+    df['sender_bic'] = df['Source IP'].apply(lambda x: generate_bic_code())  # Using Source IP as sender identifier
+    df['receiver_bic'] = df['Destination IP'].apply(lambda x: generate_bic_code())  # Using Destination IP as receiver identifier
+    df['transaction_reference'] = [f"REF-{np.random.randint(100000, 999999)}" for _ in range(len(df))]
+    df['ordering_customer'] = df['Source IP'].apply(lambda x: fake.name())
+    df['beneficiary_customer'] = df['Destination IP'].apply(lambda x: fake.name())
+    return df
 # In the main function, preprocess and sort the data by timestamp
 if __name__ == "__main__":
     # Load datasets 
@@ -203,6 +272,11 @@ if __name__ == "__main__":
 
     # Step 2: Preprocess the combined dataset
     combined_data = normalize_data(combined_data)
+
+    # Simulate SWIFT transactions
+    simulated_transactions = simulate_swift_transactions(n_transactions=1000)
+    print("Simulated SWIFT transactions:")
+    print(simulated_transactions.head())
 
     # Select features for LSTM
     X = combined_data[['amount', 'qr_key_size', 'qr_encapsulation_time', 'qr_decapsulation_time',
@@ -236,3 +310,4 @@ if __name__ == "__main__":
     plot_roc_curve(y_true, ensemble_preds, title="Ensemble ROC Curve")
 
     print("Confusion matrix and ROC curve saved as images.")
+
