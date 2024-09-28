@@ -1,4 +1,4 @@
-import os
+import os 
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -249,7 +249,8 @@ def transform_cic_to_swift(df):
     df['ordering_customer'] = df['Source IP'].apply(lambda x: fake.name())
     df['beneficiary_customer'] = df['Destination IP'].apply(lambda x: fake.name())
     return df
-# In the main function, preprocess and sort the data by timestamp
+
+# Main function to execute the flow
 if __name__ == "__main__":
     # Load datasets 
     ieee_cis_data = load_ieee_cis_data('Data/IEEE-CIS-Fraud-Detection-master/train_transaction.csv')
@@ -310,4 +311,3 @@ if __name__ == "__main__":
     plot_roc_curve(y_true, ensemble_preds, title="Ensemble ROC Curve")
 
     print("Confusion matrix and ROC curve saved as images.")
-
