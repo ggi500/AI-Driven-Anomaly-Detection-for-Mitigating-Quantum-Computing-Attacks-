@@ -1,4 +1,4 @@
-import os
+import os  
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
@@ -20,7 +20,7 @@ def profile_code(func, *args):
     start_time = time.time()
     result = func(*args)
     end_time = time.time()
-    print(f"Execution time: {end_time - start_time} seconds")
+    logger.info(f"Execution time: {end_time - start_time} seconds")
     return result
 
 # Model Saving Functions
@@ -30,42 +30,14 @@ def save_isolation_forest_model(model, version='v1'):
     """
     with open(f'Models/isolation_forest_model_{version}.pkl', 'wb') as file:
         pickle.dump(model, file)
-    print(f"Isolation Forest model (version: {version}) saved.")
+    logger.info(f"Isolation Forest model (version: {version}) saved.")
 
 def save_lstm_model(model, version='final'):
     """
     Saves the trained LSTM model to the Models directory.
     """
     model.save(f'Models/lstm_model_{version}.h5')
-    print(f"LSTM model (version: {version}) saved.")
-
-# Function to save Isolation Forest
-def train_and_save_isolation_forest(X_train, model_save_path):
-    start_time = time.time()  # Start timer for training
-    model = IsolationForest(contamination=0.1, random_state=42)
-    model.fit(X_train)
-    end_time = time.time()  # End timer
-    training_time = end_time - start_time
-    logger.info(f"Isolation Forest training time: {training_time} seconds")  # Log training time
-    # Save model to `trained_models` directory
-    joblib.dump(model, model_save_path)
-    print(f"Isolation Forest model saved at {model_save_path}")
-
-# Function to save LSTM model
-def train_and_save_lstm(X_train, y_train, sequence_length, model_save_path):
-    start_time = time.time()  # Start timer for training
-    model = Sequential([
-        LSTM(64, activation='relu', input_shape=(sequence_length, X_train.shape[2])),
-        Dense(1)
-    ])
-    model.compile(optimizer='adam', loss='mse')
-    model.fit(X_train, y_train, epochs=10, batch_size=32)
-    end_time = time.time()  # End timer
-    training_time = end_time - start_time
-    logger.info(f"LSTM training time: {training_time} seconds")  # Log training time
-    # Save model to `trained_models` directory
-    model.save(model_save_path)
-    print(f"LSTM model saved at {model_save_path}")
+    logger.info(f"LSTM model (version: {version}) saved.")
 
 # Model Adaptation Functions
 def adapt_isolation_forest(data, contamination=0.1):
@@ -116,6 +88,34 @@ def adapt_lstm(data, sequence_length, epochs=10, batch_size=32):
     logger.info(f"LSTM training time: {training_time} seconds")  # Log training time
 
     return model
+
+# Function to save Isolation Forest
+def train_and_save_isolation_forest(X_train, model_save_path):
+    start_time = time.time()  # Start timer for training
+    model = IsolationForest(contamination=0.1, random_state=42)
+    model.fit(X_train)
+    end_time = time.time()  # End timer
+    training_time = end_time - start_time
+    logger.info(f"Isolation Forest training time: {training_time} seconds")  # Log training time
+    # Save model to `trained_models` directory
+    joblib.dump(model, model_save_path)
+    logger.info(f"Isolation Forest model saved at {model_save_path}")
+
+# Function to save LSTM model
+def train_and_save_lstm(X_train, y_train, sequence_length, model_save_path):
+    start_time = time.time()  # Start timer for training
+    model = Sequential([
+        LSTM(64, activation='relu', input_shape=(sequence_length, X_train.shape[2])),
+        Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    model.fit(X_train, y_train, epochs=10, batch_size=32)
+    end_time = time.time()  # End timer
+    training_time = end_time - start_time
+    logger.info(f"LSTM training time: {training_time} seconds")  # Log training time
+    # Save model to `trained_models` directory
+    model.save(model_save_path)
+    logger.info(f"LSTM model saved at {model_save_path}")
 
 # Continuous Retraining Function
 def continuous_retraining(model, X_new, y_new, retrain_frequency=100):
@@ -207,8 +207,7 @@ def evaluate_ensemble(X_test, y_true, isolation_forest_model, lstm_model, sequen
     f1 = f1_score(y_true, combined_pred)
     
     end_time = time.time()  # End timer for predictions
-    prediction_time = end_time - start_time
-    logger.info(f"Ensemble prediction time: {prediction_time} seconds")  # Log prediction time
+    logger.info(f"Ensemble prediction time: {end_time - start_time} seconds")  # Log prediction time
 
     return {"precision": precision, "recall": recall, "f1": f1}
 
@@ -237,10 +236,11 @@ def evaluate_crypto_performance():
     encapsulation_times = analyze_encapsulation_times()
     decapsulation_times = analyze_decapsulation_times()
 
-    print(f"Average Key Size: {np.mean(key_sizes)} bytes")
-    print(f"Average Encapsulation Time: {np.mean(encapsulation_times)} seconds")
-    print(f"Average Decapsulation Time: {np.mean(decapsulation_times)} seconds")
+    logger.info(f"Average Key Size: {np.mean(key_sizes)} bytes")
+    logger.info(f"Average Encapsulation Time: {np.mean(encapsulation_times)} seconds")
+    logger.info(f"Average Decapsulation Time: {np.mean(decapsulation_times)} seconds")
 
+# Main function for training and evaluation
 if __name__ == "__main__":
 
     # Example usage
@@ -259,13 +259,13 @@ if __name__ == "__main__":
 
     # Ensemble evaluation
     ensemble_results = profile_code(evaluate_ensemble, X_test, y_test_seq, IsolationForest(), Sequential(), sequence_length)
-    print("Ensemble model evaluation:", ensemble_results)
+    logger.info("Ensemble model evaluation: %s", ensemble_results)
 
     # Evaluate ROC-AUC for the Isolation Forest model
     roc_auc = profile_code(evaluate_roc_auc, IsolationForest(), X_test, y_test_seq)
-    print(f"Isolation Forest ROC-AUC: {roc_auc}")
+    logger.info(f"Isolation Forest ROC-AUC: {roc_auc}")
     
     # Evaluate cryptographic performance
     profile_code(evaluate_crypto_performance)
 
-    print("Model adaptation and evaluation complete.")
+    logger.info("Model adaptation and evaluation complete.")

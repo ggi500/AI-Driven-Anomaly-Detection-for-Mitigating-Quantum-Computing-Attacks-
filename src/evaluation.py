@@ -1,4 +1,4 @@
-import time
+import time 
 import tensorflow as tf
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score, confusion_matrix, roc_curve, ConfusionMatrixDisplay, precision_recall_curve
@@ -163,8 +163,93 @@ def prepare_sequences(data, sequence_length):
         y.append(data[i + sequence_length])
     return np.array(X), np.array(y)
 
+# Ensemble Voting Mechanism
+def ensemble_voting(isolation_forest_pred, lstm_pred, threshold=0.5):
+    """
+    Combines predictions from Isolation Forest and LSTM using simple voting.
+    
+    Parameters:
+    - isolation_forest_pred: list, predictions from the Isolation Forest model.
+    - lstm_pred: list, predictions from the LSTM model.
+    - threshold: float, the decision threshold for LSTM predictions.
+    
+    Returns:
+    - combined_pred: list, combined predictions from both models.
+    """
+    combined_pred = []
+    for iso_pred, lstm_p in zip(isolation_forest_pred, lstm_pred):
+        vote = (iso_pred + (1 if lstm_p > threshold else 0)) / 2
+        combined_pred.append(1 if vote >= 0.5 else -1)
+    return np.array(combined_pred)
+
+# Ensemble Model Evaluation
+def evaluate_ensemble(X_test, y_true, isolation_forest_model, lstm_model, sequence_length, threshold=0.5):
+    """
+    Evaluates the performance of the ensemble model using custom metrics.
+    
+    Parameters:
+    - X_test: numpy array, test data.
+    - y_true: numpy array, true labels.
+    - isolation_forest_model: trained Isolation Forest model.
+    - lstm_model: trained LSTM model.
+    - sequence_length: int, the length of sequences for LSTM.
+    - threshold: float, the decision threshold for LSTM predictions.
+    
+    Returns:
+    - results: dict, contains precision, recall, and F1-score.
+    """
+    start_time = time.time()  # Start timer for predictions
+    
+    # Predict using Isolation Forest
+    iso_pred = isolation_forest_model.predict(X_test)
+    
+    # Prepare sequences for LSTM and predict
+    X_seq_test, _ = prepare_sequences(X_test, sequence_length)
+    lstm_pred = lstm_model.predict(X_seq_test).flatten()
+    
+    # Combine predictions using voting mechanism
+    combined_pred = ensemble_voting(iso_pred, lstm_pred, threshold)
+    
+    precision = precision_score(y_true, combined_pred)
+    recall = recall_score(y_true, combined_pred)
+    f1 = f1_score(y_true, combined_pred)
+    
+    end_time = time.time()  # End timer for predictions
+    logger.info(f"Ensemble prediction time: {end_time - start_time} seconds")  # Log prediction time
+
+    return {"precision": precision, "recall": recall, "f1": f1}
+
+# ROC-AUC Evaluation
+def evaluate_roc_auc(model, X_test, y_true):
+    """
+    Evaluates the ROC-AUC score for models using predict_proba.
+    
+    Parameters:
+    - model: trained classifier model that supports predict_proba.
+    - X_test: numpy array, test data.
+    - y_true: numpy array, true labels.
+    
+    Returns:
+    - roc_auc: float, ROC-AUC score.
+    """
+    y_pred_proba = model.predict_proba(X_test)[:, 1]  # For classifiers with predict_proba
+    roc_auc = roc_auc_score(y_true, y_pred_proba)
+    return roc_auc
 # k-fold Cross-validation
 def k_fold_cross_validation(model_func, X, y, k=5, sequence_length=None):
+    """
+    Perform k-fold cross-validation on the given model.
+
+    Parameters:
+    - model_func: callable, function that returns a new instance of the model to be trained.
+    - X: numpy array, the input data.
+    - y: numpy array, the target labels.
+    - k: int, the number of folds for cross-validation.
+    - sequence_length: int, sequence length for LSTM models (optional).
+
+    Returns:
+    - avg_metrics: dict, average precision, recall, f1, map, and ndcg metrics across all folds.
+    """
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
     metrics = {"precision": [], "recall": [], "f1": [], "map": [], "ndcg": []}
     
@@ -191,6 +276,19 @@ def k_fold_cross_validation(model_func, X, y, k=5, sequence_length=None):
 
 # Bootstrap Sampling
 def bootstrap_sampling(model_func, X, y, n_iterations=100, sequence_length=None):
+    """
+    Perform bootstrap sampling for model evaluation.
+
+    Parameters:
+    - model_func: callable, function that returns a new instance of the model to be trained.
+    - X: numpy array, the input data.
+    - y: numpy array, the target labels.
+    - n_iterations: int, the number of bootstrap iterations.
+    - sequence_length: int, sequence length for LSTM models (optional).
+
+    Returns:
+    - avg_metrics: dict, average precision, recall, f1, map, and ndcg metrics across all iterations.
+    """
     metrics = {"precision": [], "recall": [], "f1": [], "map": [], "ndcg": []}
     
     for i in range(n_iterations):
@@ -216,6 +314,9 @@ def bootstrap_sampling(model_func, X, y, n_iterations=100, sequence_length=None)
 
 # Cryptographic Performance Evaluation
 def evaluate_crypto_performance():
+    """
+    Evaluate cryptographic performance metrics such as key sizes, encapsulation times, and decapsulation times.
+    """
     key_sizes = analyze_key_sizes()
     encapsulation_times = analyze_encapsulation_times()
     decapsulation_times = analyze_decapsulation_times()
@@ -225,8 +326,20 @@ def evaluate_crypto_performance():
     logger.info(f"Average Decapsulation Time: {np.mean(decapsulation_times)} seconds")
 
 # Synthetic SWIFT Data Generator and Kyber Operations
-# Simulating transactions
 def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=10000):
+    """
+    Simulate SWIFT transactions by combining multiple datasets and performing CRYSTALS-Kyber operations.
+
+    Parameters:
+    - unsw: pandas DataFrame, the UNSW dataset.
+    - cicids: pandas DataFrame, the CICIDS dataset.
+    - ieee_cis: pandas DataFrame, the IEEE-CIS dataset.
+    - paysim: pandas DataFrame, the PaySim dataset.
+    - n_transactions: int, number of transactions to simulate.
+
+    Returns:
+    - swift_transactions: pandas DataFrame, the generated SWIFT-like transactions.
+    """
     swift_transactions = []
     
     for _ in range(n_transactions):
@@ -251,6 +364,15 @@ def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=1
 
 # Synthetic SWIFT Data Generator
 def generate_synthetic_swift_data(n_samples=1000):
+    """
+    Generate synthetic SWIFT-like data.
+
+    Parameters:
+    - n_samples: int, the number of samples to generate.
+
+    Returns:
+    - pandas DataFrame, the generated synthetic transactions.
+    """
     faker = Faker()
     data = {
         'transaction_id': [faker.uuid4() for _ in range(n_samples)],
@@ -267,8 +389,9 @@ def generate_synthetic_swift_data(n_samples=1000):
 def perform_kyber_operations():
     """
     Perform CRYSTALS-Kyber operations, including key generation, encapsulation, and decapsulation.
-    
-    Returns a dictionary containing public key, ciphertext, and shared secrets.
+
+    Returns:
+    - dict: containing public key, ciphertext, and shared secrets.
     """
     public_key, secret_key = kyber512.keypair()
     
@@ -290,6 +413,18 @@ def perform_kyber_operations():
 
 # Differentially Private Model Training with Opacus
 def train_privacy_preserving_model(train_data, target_data, batch_size=32, epochs=5):
+    """
+    Train a model with differential privacy using Opacus.
+
+    Parameters:
+    - train_data: numpy array, the training input data.
+    - target_data: numpy array, the target labels.
+    - batch_size: int, batch size for training.
+    - epochs: int, number of epochs for training.
+
+    Returns:
+    - model: the trained PyTorch model.
+    """
     model = nn.Sequential(
         nn.Linear(train_data.shape[1], 128),
         nn.ReLU(),
@@ -329,6 +464,15 @@ def train_privacy_preserving_model(train_data, target_data, batch_size=32, epoch
 
 # Fairness and Bias Check using AIF360
 def check_for_bias(data):
+    """
+    Check for bias in the dataset using AIF360.
+
+    Parameters:
+    - data: pandas DataFrame, the dataset containing a binary label and protected attribute.
+
+    Returns:
+    - fair_dataset: BinaryLabelDataset, the reweighed dataset to correct bias.
+    """
     dataset = BinaryLabelDataset(df=data, label_names=['label'], protected_attribute_names=['gender'])
     rw = Reweighing(unprivileged_groups=[{'gender': 0}], privileged_groups=[{'gender': 1}])
     fair_dataset = rw.fit_transform(dataset)
@@ -337,6 +481,13 @@ def check_for_bias(data):
 
 # New function for model serialization
 def save_model(model, filename):
+    """
+    Save a model to a file using joblib.
+
+    Parameters:
+    - model: the model to be saved.
+    - filename: str, the path where the model should be saved.
+    """
     try:
         joblib.dump(model, filename)
         logger.info(f"Model successfully saved to {filename}")
@@ -345,6 +496,15 @@ def save_model(model, filename):
 
 # New function for model deserialization
 def load_model(filename):
+    """
+    Load a model from a file using joblib.
+
+    Parameters:
+    - filename: str, the path from where the model should be loaded.
+
+    Returns:
+    - model: the loaded model, or None if an error occurred.
+    """
     try:
         model = joblib.load(filename)
         logger.info(f"Model successfully loaded from {filename}")

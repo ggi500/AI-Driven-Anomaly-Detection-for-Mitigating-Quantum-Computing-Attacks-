@@ -1,4 +1,4 @@
-import os   
+import os  
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
@@ -13,6 +13,43 @@ from opacus import PrivacyEngine  # Opacus for differential privacy in training
 from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
 import time
 from swift_transaction_simulation import transform_ieee_to_swift, transform_unsw_to_swift, transform_paysim_to_swift, transform_cic_to_swift
+
+# Utility function for profiling code execution
+def profile_code(func, *args):
+    """
+    Utility function to profile code execution time.
+    
+    Parameters:
+    - func: Function to be executed and profiled.
+    - *args: Arguments for the function.
+    
+    Returns:
+    - result: Result of the function execution.
+    """
+    start_time = time.time()
+    result = func(*args)
+    end_time = time.time()
+    print(f"Execution time for {func.__name__}: {end_time - start_time} seconds")
+    return result
+
+# Prepare sequences for LSTM input
+def prepare_sequences(data, sequence_length):
+    """
+    Prepares sequences for LSTM input.
+    
+    Parameters:
+    - data: numpy array, input data.
+    - sequence_length: int, length of each sequence.
+    
+    Returns:
+    - X: numpy array, sequence input for LSTM.
+    - y: numpy array, target values.
+    """
+    X, y = [], []
+    for i in range(len(data) - sequence_length):
+        X.append(data[i:i + sequence_length])
+        y.append(data[i + sequence_length])
+    return np.array(X), np.array(y)
 
 # Load datasets 
 def load_ieee_cis_data(filepath):
@@ -94,14 +131,6 @@ def engineer_features(df):
     
     df = engineer_attack_features(df)
     return df
-
-# Prepare sequences for LSTM input
-def prepare_sequences(data, sequence_length):
-    X, y = [], []
-    for i in range(len(data) - sequence_length):
-        X.append(data[i:i + sequence_length])
-        y.append(data[i + sequence_length])
-    return np.array(X), np.array(y)
 
 # Simulating transactions 
 def simulate_swift_transactions(unsw, cicids, ieee_cis, paysim, n_transactions=10000):
