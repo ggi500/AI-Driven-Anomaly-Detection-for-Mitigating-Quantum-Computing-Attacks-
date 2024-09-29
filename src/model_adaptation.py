@@ -240,6 +240,16 @@ def evaluate_crypto_performance():
     logger.info(f"Average Encapsulation Time: {np.mean(encapsulation_times)} seconds")
     logger.info(f"Average Decapsulation Time: {np.mean(decapsulation_times)} seconds")
 
+# New functions from model_adaptation.py
+def load_model(filepath):
+    return joblib.load(filepath)
+
+def save_model(model, filepath):
+    joblib.dump(model, filepath)
+
+def load_lstm_model(filepath):
+    return tf.keras.models.load_model(filepath)
+
 # Main function for training and evaluation
 if __name__ == "__main__":
 
