@@ -51,6 +51,15 @@ def prepare_sequences(data, sequence_length):
         y.append(data[i + sequence_length])
     return np.array(X), np.array(y)
 
+# New prepare_sequences function from data_preprocessing.py
+def prepare_sequences(data, sequence_length):
+    X = []
+    y = []
+    for i in range(len(data) - sequence_length):
+        X.append(data[i:(i + sequence_length)])
+        y.append(data[i + sequence_length])
+    return np.array(X), np.array(y)
+
 # Load datasets 
 def load_ieee_cis_data(filepath):
     if not os.path.exists(filepath):
