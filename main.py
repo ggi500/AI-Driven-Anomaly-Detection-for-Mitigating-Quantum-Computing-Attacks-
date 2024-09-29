@@ -17,7 +17,6 @@ import keras_tuner as kt  # For automated hyperparameter tuning
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
 # Manual Hyperparameter Tuning for LSTM Model
 def build_model(hp):
     model = tf.keras.Sequential()
@@ -27,7 +26,7 @@ def build_model(hp):
         model.add(tf.keras.layers.LSTM(units=hp.Int('units_' + str(i), min_value=32, max_value=256, step=32), 
                                        activation='relu',
                                        return_sequences=True if i < 2 else False,  # Only last layer doesn't return sequences
-                                       input_shape=(sequence_length, X_train.shape[2])))
+                                       input_shape=(None, hp.Int('input_dim', min_value=1, max_value=100))))
         model.add(tf.keras.layers.Dropout(hp.Float('dropout_' + str(i), min_value=0.0, max_value=0.5, step=0.1)))
     
     model.add(tf.keras.layers.Dense(1))  # Output layer
@@ -36,6 +35,7 @@ def build_model(hp):
                   loss='mse')
     
     return model
+
 
 def main():
     print("Generating or loading data...")
