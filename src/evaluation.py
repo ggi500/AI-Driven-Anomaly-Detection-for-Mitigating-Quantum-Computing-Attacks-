@@ -1,4 +1,4 @@
-import time 
+import time  
 import tensorflow as tf
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score, confusion_matrix, roc_curve, ConfusionMatrixDisplay, precision_recall_curve
@@ -515,4 +515,3 @@ def load_model(filename):
     except Exception as e:
         logger.error(f"Error loading model from {filename}: {str(e)}")
         return None
-
