@@ -17,6 +17,7 @@ import keras_tuner as kt  # For automated hyperparameter tuning
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
 # Manual Hyperparameter Tuning for LSTM Model
 def build_model(hp):
     model = tf.keras.Sequential()
