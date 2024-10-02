@@ -5,6 +5,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_sc
 from sklearn.model_selection import KFold, train_test_split
 import numpy as np
 import pandas as pd
+from faker import Faker
 from sklearn.utils import resample
 from src.crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times
 from aif360.algorithms.preprocessing import Reweighing
@@ -13,7 +14,8 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pqcrypto.kem import kyber512
-from faker import Faker
+from faker import Fake
+from scipy.stats import ks_2samp
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader, TensorDataset
@@ -25,7 +27,6 @@ import yaml
 import joblib
 from sklearn.exceptions import NotFittedError
 import os
-from tensorflow.keras.callbacks import ModelCheckpoint
 import tempfile
 
 # Set up logging
@@ -401,12 +402,35 @@ def create_isolation_forest_checkpoint(model, checkpoint_dir):
     logger.info(f"Created Isolation Forest checkpoint: {checkpoint_path}")
     return checkpoint_path
 
-def create_lstm_checkpoint(model, checkpoint_dir):
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    checkpoint_path = os.path.join(checkpoint_dir, "lstm_checkpoint_{epoch:02d}-{val_loss:.2f}.h5")
-    checkpoint = ModelCheckpoint(checkpoint_path, save_best_only=True, monitor='val_loss', mode='min')
-    logger.info(f"Created LSTM checkpoint callback: {checkpoint_path}")
-    return checkpoint
+def adapt_lstm(data, sequence_length, epochs=10, batch_size=32, checkpoint_dir='checkpoints/lstm'):
+    def train_lstm():
+        model = tf.keras.Sequential([
+            tf.keras.layers.LSTM(50, activation='relu', input_shape=(sequence_length, data.shape[2])),
+            tf.keras.layers.Dense(1)
+        ])
+        model.compile(optimizer='adam', loss='mse')
+
+        # Create a temporary validation set
+        val_split = 0.2
+        val_samples = int(len(data) * val_split)
+        X_train, X_val = data[:-val_samples], data[-val_samples:]
+
+        # Training without the ModelCheckpoint callback
+        model.fit(X_train, X_train, epochs=epochs, batch_size=batch_size, validation_data=(X_val, X_val))
+
+        # Manually saving the model's weights using PyTorch after training
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        checkpoint_path = os.path.join(checkpoint_dir, "lstm_model_weights.pth")
+        torch.save(model.get_weights(), checkpoint_path)  # Save the model's weights with PyTorch
+
+        return model, checkpoint_path
+
+    model, checkpoint_path = profile_code(train_lstm)
+
+    # Load the weights back into the model using PyTorch's torch.load
+    model.set_weights(torch.load(checkpoint_path))
+
+    return model, checkpoint_path
 
 def rollback_isolation_forest(checkpoint_path):
     if os.path.exists(checkpoint_path):
@@ -439,8 +463,35 @@ def adapt_isolation_forest(data, contamination=0.1, checkpoint_dir='checkpoints/
     checkpoint_path = create_isolation_forest_checkpoint(clf, checkpoint_dir)
     
     return clf, checkpoint_path
+# Function to detect data drift
+def detect_drift(old_data, new_data, p_value_threshold=0.05):
+    """
+    Detects drift between old_data and new_data using the Kolmogorov-Smirnov test.
 
-# Modified adapt_lstm function with checkpointing
+    Parameters:
+    old_data (numpy.ndarray): The data that was used for training.
+    new_data (numpy.ndarray): The new data to compare for drift.
+    p_value_threshold (float): The threshold for detecting drift. If the p-value of the KS test is 
+                               less than this threshold, drift is detected.
+
+    Returns:
+    bool: True if drift is detected, False otherwise.
+    """
+    drift_detected = False
+    for i in range(old_data.shape[1]):  # Assuming old_data and new_data have the same number of features
+        stat, p_value = ks_2samp(old_data[:, i], new_data[:, i])
+        if p_value < p_value_threshold:
+            drift_detected = True
+            break
+    return drift_detected
+
+# Function for continuous retraining with drift detection
+def continuous_retraining_with_drift_detection(model, X_new, y_new, old_data, model_type, retrain_frequency=100, p_value_threshold=0.05):
+    if len(X_new) % retrain_frequency == 0:
+        if detect_drift(old_data, X_new, p_value_threshold):
+            logger.info("Data drift detected. Retraining the model.")
+            # Proceed with checkpointing and retraining logic
+
 def adapt_lstm(data, sequence_length, epochs=10, batch_size=32, checkpoint_dir='checkpoints/lstm'):
     def train_lstm():
         model = tf.keras.Sequential([
@@ -454,19 +505,23 @@ def adapt_lstm(data, sequence_length, epochs=10, batch_size=32, checkpoint_dir='
         val_samples = int(len(data) * val_split)
         X_train, X_val = data[:-val_samples], data[-val_samples:]
         
-        checkpoint_callback = create_lstm_checkpoint(model, checkpoint_dir)
+        # Training without TensorFlow's ModelCheckpoint
+        model.fit(X_train, X_train, epochs=epochs, batch_size=batch_size, validation_data=(X_val, X_val))
         
-        model.fit(X_train, epochs=epochs, batch_size=batch_size, 
-                  validation_data=(X_val, X_val), callbacks=[checkpoint_callback])
-        return model
+        # Manually saving the model weights using PyTorch after training
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        checkpoint_path = os.path.join(checkpoint_dir, "lstm_model_weights.pth")
+        torch.save(model.get_weights(), checkpoint_path)  # Save Keras weights using PyTorch
+        
+        return model, checkpoint_path
 
-    model = profile_code(train_lstm)
-
-    # Get the path of the best checkpoint
-    checkpoint_path = tf.train.latest_checkpoint(checkpoint_dir)
-
+    # Train the model and save the checkpoint
+    model, checkpoint_path = profile_code(train_lstm)
+    
+    # Load the weights back into the model using PyTorch's torch.load
+    model.set_weights(torch.load(checkpoint_path))
+    
     return model, checkpoint_path
-
 # Modified continuous_retraining_with_drift_detection function with checkpointing and rollback
 def continuous_retraining_with_drift_detection(model, X_new, y_new, old_data, model_type, retrain_frequency=100, p_value_threshold=0.05):
     if len(X_new) % retrain_frequency == 0:
@@ -477,15 +532,19 @@ def continuous_retraining_with_drift_detection(model, X_new, y_new, old_data, mo
             if model_type == 'isolation_forest':
                 checkpoint_path = create_isolation_forest_checkpoint(model, 'checkpoints/isolation_forest')
             elif model_type == 'lstm':
-                checkpoint_path = create_lstm_checkpoint(model, 'checkpoints/lstm')
-            
+                # Manual checkpointing for LSTM using PyTorch's torch.save
+                checkpoint_dir = 'checkpoints/lstm'
+                os.makedirs(checkpoint_dir, exist_ok=True)
+                checkpoint_path = os.path.join(checkpoint_dir, "lstm_model_weights.pth")
+                torch.save(model.get_weights(), checkpoint_path)  # Save LSTM model weights using PyTorch
+                
             try:
                 if model_type == 'isolation_forest':
                     model, _ = adapt_isolation_forest(X_new)
                 elif model_type == 'lstm':
                     sequence_length = X_new.shape[1]  # Assume X_new is already sequenced
                     model, _ = adapt_lstm(X_new, sequence_length)
-                
+
                 logger.info("Model retraining complete due to detected drift.")
             except Exception as e:
                 logger.error(f"Error during retraining: {str(e)}. Rolling back to previous checkpoint.")
@@ -496,7 +555,6 @@ def continuous_retraining_with_drift_detection(model, X_new, y_new, old_data, mo
         else:
             logger.info("No significant drift detected. Skipping retraining.")
     return model
-
 # Main function for training and evaluation
 if __name__ == "__main__":
     # Example usage
