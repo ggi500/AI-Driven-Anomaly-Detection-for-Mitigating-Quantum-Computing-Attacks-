@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from pqcrypto.kem import kyber512
 
@@ -25,6 +26,32 @@ def crypto_specific_metrics(key_sizes, encapsulation_times, decapsulation_times)
         "Abnormal Encapsulation Time Rate": abnormal_encapsulation,
         "Decapsulation Failure Rate": decapsulation_failures
     }
+
+# New functions for introducing anomalies
+def introduce_key_encapsulation_anomalies(df, anomaly_rate=0.05):
+    num_anomalies = int(len(df) * anomaly_rate)
+    anomaly_indices = np.random.choice(df.index, num_anomalies, replace=False)
+    for idx in anomaly_indices:
+        df.at[idx, 'qr_encapsulation_time'] = np.random.uniform(0.01, 0.05)  # Introduce anomaly
+    return df
+
+def introduce_decapsulation_failures(df, failure_rate=0.03):
+    if 'Decapsulation Success' not in df.columns:
+        df['Decapsulation Success'] = True  # Initialize column if it doesn't exist
+    num_failures = int(len(df) * failure_rate)
+    failure_indices = np.random.choice(df.index, num_failures, replace=False)
+    for idx in failure_indices:
+        df.at[idx, 'Decapsulation Success'] = False
+        df.at[idx, 'decryption_time'] = np.random.uniform(0.05, 0.1)  # Simulate failure
+    return df
+
+def label_anomalies(df):
+    df['Anomaly'] = np.where(
+        (df['qr_encapsulation_time'] > 0.005) | 
+        (df['Decapsulation Success'] == False),
+        1, 0
+    )
+    return df
 
 # Kyber Operations Functions
 def perform_kyber_operations():
@@ -158,3 +185,17 @@ if __name__ == "__main__":
     print("\nCRYSTALS-Kyber Custom Metrics:")
     for metric, value in crypto_metrics.items():
         print(f"{metric}: {value}")
+
+    # Example usage of new anomaly introduction and labeling functions
+    df = pd.read_csv('path/to/your/processed_swift_data.csv')
+    
+    df = introduce_key_encapsulation_anomalies(df)
+    df = introduce_decapsulation_failures(df)
+    df = label_anomalies(df)
+    
+    print("DataFrame with introduced and labeled anomalies:")
+    print(df[['qr_encapsulation_time', 'decryption_time', 'Decapsulation Success', 'Anomaly']].head())
+
+    # Calculate the percentage of anomalies
+    anomaly_percentage = (df['Anomaly'].sum() / len(df)) * 100
+    print(f"Percentage of anomalies: {anomaly_percentage:.2f}%")
