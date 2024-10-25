@@ -60,6 +60,22 @@ def prepare_sequences(data, sequence_length):
         y.append(data[i + sequence_length])
     return np.array(X), np.array(y)
 
+def prepare_sliding_window_sequences(data, sequence_length):
+    """ 
+    Converts the data into a series of sliding windows for LSTM input.
+    Args:
+    - data: numpy array or pandas DataFrame of time-series data
+    - sequence_length: length of each sliding window
+    Returns:
+    - X: numpy array of shape (num_samples, sequence_length, num_features)
+    - y: numpy array of labels (the next value after each sequence)
+    """
+    X, y = [], []
+    for i in range(len(data) - sequence_length):
+        X.append(data[i:i + sequence_length])
+        y.append(data[i + sequence_length])  # Predict the next value after the window
+    return np.array(X), np.array(y)
+
 # Load datasets 
 def load_ieee_cis_data(filepath):
     if not os.path.exists(filepath):
