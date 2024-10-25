@@ -7,12 +7,13 @@ from sklearn.model_selection import train_test_split
 from src.model_adaptation import adapt_isolation_forest, load_model
 from src.evaluation import evaluate_isolation_forest, evaluate_lstm, evaluate_model, evaluate_ensemble, evaluate_roc_auc
 from src.generate_data import generate_and_save_data as generate_data
-from adversarial_testing import evaluate_against_adversarial
+from adversarial_testing import evaluate_against_adversarial  # Import the adversarial testing function
 from crypto_analysis import analyze_key_sizes, analyze_encapsulation_times, analyze_decapsulation_times, crypto_specific_metrics
 from src.data_preprocessing import prepare_sequences
 import tensorflow as tf
 import logging
 import keras_tuner as kt  # For automated hyperparameter tuning
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -121,7 +122,7 @@ def main():
     for metric, score in results.items():
         print(f"{metric}: {score}")
 
-    # Perform adversarial testing on the LSTM model
+    #  Adversarial Testing  
     print("\nPerforming adversarial evaluation on the LSTM model...")
     epsilon = 0.01  # Perturbation amount for FGSM attack
     accuracy_adv, fpr_adv = evaluate_against_adversarial(lstm_model, X_test_lstm, y_test_lstm, epsilon=epsilon)
@@ -129,6 +130,7 @@ def main():
     # Print adversarial evaluation results
     print(f"\nAdversarial Accuracy: {accuracy_adv}")
     print(f"Adversarial False Positive Rate: {fpr_adv}")
+    # --- Adversarial Testing Ends Here ---
 
     # Add basic data visualization
     if not os.path.exists('Data'):
@@ -168,5 +170,7 @@ def main():
 
     print("Visualizations saved in the Data directory.")
 
+
 if __name__ == "__main__":
     main()
+
